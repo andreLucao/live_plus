@@ -5,7 +5,7 @@ import { Bill } from '@/lib/models/Bill';
 export async function DELETE(request, { params }) {
   try {
     await connectDB();
-    const { id } = params;
+    const { id } = await params; // Ensure params is awaited
     await Bill.findByIdAndDelete(id);
     return NextResponse.json({ message: 'Bill deleted successfully' });
   } catch (error) {
