@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 export default function HospitalBillManager() {
   const [bills, setBills] = useState([])
@@ -16,17 +17,12 @@ export default function HospitalBillManager() {
   const [filter, setFilter] = useState("all")
   const [editingId, setEditingId] = useState(null)
   const [darkMode, setDarkMode] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState("")
 
   useEffect(() => {
-    const savedBills = localStorage.getItem("hospitalBills")
-    if (savedBills) {
-      setBills(JSON.parse(savedBills))
-    }
+    fetchBills()
   }, [])
-
-  useEffect(() => {
-    localStorage.setItem("hospitalBills", JSON.stringify(bills))
-  }, [bills])
 
   useEffect(() => {
     if (darkMode) {
@@ -36,26 +32,92 @@ export default function HospitalBillManager() {
     }
   }, [darkMode])
 
-  const addBill = (e) => {
-    e.preventDefault()
-    if (newBill.name && newBill.amount && newBill.date && newBill.category) {
-      setBills([...bills, { ...newBill, id: Date.now().toString(), amount: Number.parseFloat(newBill.amount) }])
-      setNewBill({ name: "", amount: "", date: "", category: "" })
+  const fetchBills = async () => {
+    try {
+      const response = await fetch('/api/bills')
+      if (!response.ok) throw new Error('Failed to fetch bills')
+      const data = await response.json()
+      setBills(data)
+      setError("")
+    } catch (error) {
+      console.error('Error fetching bills:', error)
+      setError("Failed to load bills. Please try again later.")
+    } finally {
+      setIsLoading(false)
     }
   }
 
-  const removeBill = (id) => {
-    setBills(bills.filter((bill) => bill.id !== id))
+  const addBill = async (e) => {
+    e.preventDefault()
+    if (newBill.name && newBill.amount && newBill.date && newBill.category) {
+      try {
+        const response = await fetch('/api/bills', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...newBill,
+            amount: Number.parseFloat(newBill.amount)
+          }),
+        })
+
+        if (!response.ok) throw new Error('Failed to add bill')
+        await fetchBills()
+        setNewBill({ name: "", amount: "", date: "", category: "" })
+        setError("")
+      } catch (error) {
+        console.error('Error adding bill:', error)
+        setError("Failed to add bill. Please try again.")
+      }
+    }
+  }
+
+  const removeBill = async (id) => {
+    try {
+      const response = await fetch(`/api/bills/${id}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) throw new Error('Failed to delete bill')
+      await fetchBills()
+      setError("")
+    } catch (error) {
+      console.error('Error deleting bill:', error)
+      setError("Failed to delete bill. Please try again.")
+    }
   }
 
   const editBill = (id) => {
+    const billToEdit = bills.find(bill => bill._id === id)
+    setNewBill({
+      name: billToEdit.name,
+      amount: billToEdit.amount.toString(),
+      date: new Date(billToEdit.date).toISOString().split('T')[0],
+      category: billToEdit.category
+    })
     setEditingId(id)
   }
 
-  const saveBill = (id) => {
-    setBills(bills.map((bill) => (bill.id === id ? { ...bill, ...newBill } : bill)))
-    setEditingId(null)
-    setNewBill({ name: "", amount: "", date: "", category: "" })
+  const saveBill = async (id) => {
+    try {
+      const response = await fetch('/api/bills', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id,
+          ...newBill,
+          amount: Number.parseFloat(newBill.amount)
+        }),
+      })
+
+      if (!response.ok) throw new Error('Failed to update bill')
+      await fetchBills()
+      setEditingId(null)
+      setNewBill({ name: "", amount: "", date: "", category: "" })
+      setError("")
+    } catch (error) {
+      console.error('Error updating bill:', error)
+      setError("Failed to update bill. Please try again.")
+    }
   }
 
   const cancelEdit = () => {
@@ -83,6 +145,18 @@ export default function HospitalBillManager() {
     "Facilities Management",
   ]
 
+  if (isLoading) {
+    return (
+      <Card className="w-full max-w-4xl mx-auto">
+        <CardContent className="p-6">
+          <div className="flex justify-center items-center h-40">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
   return (
     <Card className="w-full max-w-4xl mx-auto bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-gray-800 dark:to-gray-900">
       <CardHeader className="flex flex-row items-center justify-between">
@@ -92,6 +166,12 @@ export default function HospitalBillManager() {
         <Switch checked={darkMode} onCheckedChange={setDarkMode} className="ml-4" />
       </CardHeader>
       <CardContent>
+        {error && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
         <form onSubmit={addBill} className="space-y-4 mb-6">
           <div className="flex flex-wrap gap-4">
             <div className="flex-1 min-w-[200px]">
@@ -178,10 +258,10 @@ export default function HospitalBillManager() {
         <ul className="space-y-2">
           {filteredBills.map((bill) => (
             <li
-              key={bill.id}
+              key={bill._id}
               className="flex justify-between items-center p-3 bg-white dark:bg-gray-800 rounded-md shadow-md transition-all duration-300 hover:shadow-lg"
             >
-              {editingId === bill.id ? (
+              {editingId === bill._id ? (
                 <>
                   <Input
                     value={newBill.name || bill.name}
@@ -197,7 +277,7 @@ export default function HospitalBillManager() {
                   />
                   <Input
                     type="date"
-                    value={newBill.date || bill.date}
+                    value={newBill.date || new Date(bill.date).toISOString().split('T')[0]}
                     onChange={(e) => setNewBill({ ...newBill, date: e.target.value })}
                     className="w-40 mr-2"
                   />
@@ -216,7 +296,7 @@ export default function HospitalBillManager() {
                       ))}
                     </SelectContent>
                   </Select>
-                  <Button variant="ghost" size="icon" onClick={() => saveBill(bill.id)}>
+                  <Button variant="ghost" size="icon" onClick={() => saveBill(bill._id)}>
                     <Save className="h-4 w-4 text-green-500" />
                   </Button>
                   <Button variant="ghost" size="icon" onClick={cancelEdit}>
@@ -248,10 +328,10 @@ export default function HospitalBillManager() {
                       <Tag className="h-3 w-3 mr-1" />
                       {bill.category}
                     </Badge>
-                    <Button variant="ghost" size="icon" onClick={() => editBill(bill.id)}>
+                    <Button variant="ghost" size="icon" onClick={() => editBill(bill._id)}>
                       <Edit2 className="h-4 w-4 text-blue-500" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => removeBill(bill.id)}>
+                    <Button variant="ghost" size="icon" onClick={() => removeBill(bill._id)}>
                       <Trash2 className="h-4 w-4 text-red-500" />
                     </Button>
                   </div>
@@ -274,4 +354,3 @@ export default function HospitalBillManager() {
     </Card>
   )
 }
-
