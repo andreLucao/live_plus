@@ -14,7 +14,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 export default function HospitalBillManager() {
   const [bills, setBills] = useState([])
   const [newBill, setNewBill] = useState({ name: "", amount: "", date: "", category: "" })
-  const [filter, setFilter] = useState("all")
+  const [monthFilter, setMonthFilter] = useState("all")
+  const [categoryFilter, setCategoryFilter] = useState("all")
   const [editingId, setEditingId] = useState(null)
   const [darkMode, setDarkMode] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
@@ -125,13 +126,6 @@ export default function HospitalBillManager() {
     setNewBill({ name: "", amount: "", date: "", category: "" })
   }
 
-  const filteredBills = bills.filter((bill) => {
-    if (filter === "all") return true
-    return new Date(bill.date).getMonth() === Number.parseInt(filter) - 1
-  })
-
-  const totalSum = filteredBills.reduce((sum, bill) => sum + bill.amount, 0)
-
   const categories = [
     "Medical Supplies",
     "Pharmaceuticals",
@@ -144,6 +138,16 @@ export default function HospitalBillManager() {
     "Administrative",
     "Facilities Management",
   ]
+
+  const filteredBills = bills.filter((bill) => {
+    const monthMatch = monthFilter === "all" || 
+      new Date(bill.date).getMonth() === Number.parseInt(monthFilter) - 1
+    const categoryMatch = categoryFilter === "all" || 
+      bill.category === categoryFilter
+    return monthMatch && categoryMatch
+  })
+
+  const totalSum = filteredBills.reduce((sum, bill) => sum + bill.amount, 0)
 
   if (isLoading) {
     return (
@@ -240,19 +244,35 @@ export default function HospitalBillManager() {
 
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold text-cyan-700 dark:text-cyan-300">Hospital Expenses</h3>
-          <Select value={filter} onValueChange={setFilter}>
-            <SelectTrigger className="w-[180px] border-cyan-200 dark:border-cyan-700">
-              <SelectValue placeholder="Filter by month" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Expenses</SelectItem>
-              {Array.from({ length: 12 }, (_, i) => (
-                <SelectItem key={i + 1} value={(i + 1).toString()}>
-                  {new Date(0, i).toLocaleString("default", { month: "long" })}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex gap-2">
+            <Select value={monthFilter} onValueChange={setMonthFilter}>
+              <SelectTrigger className="w-[180px] border-cyan-200 dark:border-cyan-700">
+                <SelectValue placeholder="Filter by month" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Months</SelectItem>
+                {Array.from({ length: 12 }, (_, i) => (
+                  <SelectItem key={i + 1} value={(i + 1).toString()}>
+                    {new Date(0, i).toLocaleString("default", { month: "long" })}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className="w-[180px] border-indigo-200 dark:border-indigo-700">
+                <SelectValue placeholder="Filter by category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                {categories.map((category) => (
+                  <SelectItem key={category} value={category}>
+                    {category}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         <ul className="space-y-2">
