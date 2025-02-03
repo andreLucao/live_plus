@@ -10,6 +10,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 
 export default function HospitalBillManager() {
   const [bills, setBills] = useState([])
@@ -20,6 +27,7 @@ export default function HospitalBillManager() {
   const [darkMode, setDarkMode] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState("")
+  const [isModalOpen, setIsModalOpen] = useState(false)
 
   useEffect(() => {
     fetchBills()
@@ -64,6 +72,7 @@ export default function HospitalBillManager() {
         if (!response.ok) throw new Error('Failed to add bill')
         await fetchBills()
         setNewBill({ name: "", amount: "", date: "", category: "" })
+        setIsModalOpen(false)
         setError("")
       } catch (error) {
         console.error('Error adding bill:', error)
@@ -162,85 +171,104 @@ export default function HospitalBillManager() {
   }
 
   return (
-    <Card className="w-full max-w-4xl mx-auto bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-gray-800 dark:to-gray-900">
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-3xl font-bold bg-clip-text text-transparent bg-blue-600">
-          Bills
-        </CardTitle>
-        <Switch checked={darkMode} onCheckedChange={setDarkMode} className="ml-4" />
-      </CardHeader>
-      <CardContent>
+    <div className="min-h-screen bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-gray-800 dark:to-gray-900 p-4">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex justify-between items-start mb-8">
+          <div className="flex flex-col">
+            <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-blue-600">
+              Bills
+            </h1>
+            <span className="text-2xl font-semibold bg-clip-text text-transparent bg-gradient-to-r from-green-500 to-blue-500 mt-2">
+              ${totalSum.toFixed(2)}
+            </span>
+          </div>
+          <div className="flex items-center gap-4">
+            <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white">
+                  <Plus className="mr-2 h-4 w-4" /> Add New Expense
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle>Add New Expense</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={addBill} className="space-y-4">
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="billName" className="text-cyan-700 dark:text-cyan-300">
+                        Expense Name
+                      </Label>
+                      <Input
+                        id="billName"
+                        value={newBill.name}
+                        onChange={(e) => setNewBill({ ...newBill, name: e.target.value })}
+                        placeholder="Enter expense name"
+                        className="border-cyan-200 dark:border-cyan-700"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="billAmount" className="text-green-700 dark:text-green-300">
+                        Amount
+                      </Label>
+                      <Input
+                        id="billAmount"
+                        type="number"
+                        value={newBill.amount}
+                        onChange={(e) => setNewBill({ ...newBill, amount: e.target.value })}
+                        placeholder="Enter amount"
+                        step="0.01"
+                        className="border-green-200 dark:border-green-700"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="billDate" className="text-blue-700 dark:text-blue-300">
+                        Date
+                      </Label>
+                      <Input
+                        id="billDate"
+                        type="date"
+                        value={newBill.date}
+                        onChange={(e) => setNewBill({ ...newBill, date: e.target.value })}
+                        className="border-blue-200 dark:border-blue-700"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="billCategory" className="text-indigo-700 dark:text-indigo-300">
+                        Category
+                      </Label>
+                      <Select value={newBill.category} onValueChange={(value) => setNewBill({ ...newBill, category: value })}>
+                        <SelectTrigger className="border-indigo-200 dark:border-indigo-700">
+                          <SelectValue placeholder="Select category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {categories.map((category) => (
+                            <SelectItem key={category} value={category}>
+                              {category}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <Button
+                    type="submit"
+                    className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white"
+                  >
+                    Add Expense
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
+            <Switch checked={darkMode} onCheckedChange={setDarkMode} />
+          </div>
+        </div>
+
         {error && (
           <Alert variant="destructive" className="mb-4">
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
-
-        <form onSubmit={addBill} className="space-y-4 mb-6">
-          <div className="flex flex-wrap gap-4">
-            <div className="flex-1 min-w-[200px]">
-              <Label htmlFor="billName" className="text-cyan-700 dark:text-cyan-300">
-                Expense Name
-              </Label>
-              <Input
-                id="billName"
-                value={newBill.name}
-                onChange={(e) => setNewBill({ ...newBill, name: e.target.value })}
-                placeholder="Enter expense name"
-                className="border-cyan-200 dark:border-cyan-700"
-              />
-            </div>
-            <div className="flex-1 min-w-[200px]">
-              <Label htmlFor="billAmount" className="text-green-700 dark:text-green-300">
-                Amount
-              </Label>
-              <Input
-                id="billAmount"
-                type="number"
-                value={newBill.amount}
-                onChange={(e) => setNewBill({ ...newBill, amount: e.target.value })}
-                placeholder="Enter amount"
-                step="0.01"
-                className="border-green-200 dark:border-green-700"
-              />
-            </div>
-            <div className="flex-1 min-w-[200px]">
-              <Label htmlFor="billDate" className="text-blue-700 dark:text-blue-300">
-                Date
-              </Label>
-              <Input
-                id="billDate"
-                type="date"
-                value={newBill.date}
-                onChange={(e) => setNewBill({ ...newBill, date: e.target.value })}
-                className="border-blue-200 dark:border-blue-700"
-              />
-            </div>
-            <div className="flex-1 min-w-[200px]">
-              <Label htmlFor="billCategory" className="text-indigo-700 dark:text-indigo-300">
-                Category
-              </Label>
-              <Select value={newBill.category} onValueChange={(value) => setNewBill({ ...newBill, category: value })}>
-                <SelectTrigger className="border-indigo-200 dark:border-indigo-700">
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((category) => (
-                    <SelectItem key={category} value={category}>
-                      {category}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <Button
-            type="submit"
-            className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white"
-          >
-            <Plus className="mr-2 h-4 w-4" /> Add New Expense
-          </Button>
-        </form>
 
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold text-cyan-700 dark:text-cyan-300">Hospital Expenses</h3>
@@ -360,17 +388,7 @@ export default function HospitalBillManager() {
             </li>
           ))}
         </ul>
-      </CardContent>
-      <CardFooter>
-        <div className="w-full text-right">
-          <p className="text-xl font-semibold">
-            Total Expenses:{" "}
-            <span className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-green-500 to-blue-500">
-              ${totalSum.toFixed(2)}
-            </span>
-          </p>
-        </div>
-      </CardFooter>
-    </Card>
+      </div>
+    </div>
   )
 }

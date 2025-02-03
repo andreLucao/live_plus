@@ -10,6 +10,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 
 export default function HospitalIncomeManager() {
   const [incomes, setIncomes] = useState([])
@@ -20,6 +27,7 @@ export default function HospitalIncomeManager() {
   const [darkMode, setDarkMode] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState("")
+  const [isModalOpen, setIsModalOpen] = useState(false)
 
   useEffect(() => {
     fetchIncomes()
@@ -35,7 +43,7 @@ export default function HospitalIncomeManager() {
 
   const fetchIncomes = async () => {
     try {
-      const response = await fetch('/api/incomes')
+      const response = await fetch('/api/income')
       if (!response.ok) throw new Error('Failed to fetch incomes')
       const data = await response.json()
       setIncomes(data)
@@ -52,7 +60,7 @@ export default function HospitalIncomeManager() {
     e.preventDefault()
     if (newIncome.name && newIncome.amount && newIncome.date && newIncome.category) {
       try {
-        const response = await fetch('/api/incomes', {
+        const response = await fetch('/api/income', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -64,6 +72,7 @@ export default function HospitalIncomeManager() {
         if (!response.ok) throw new Error('Failed to add income')
         await fetchIncomes()
         setNewIncome({ name: "", amount: "", date: "", category: "" })
+        setIsModalOpen(false)
         setError("")
       } catch (error) {
         console.error('Error adding income:', error)
@@ -74,7 +83,7 @@ export default function HospitalIncomeManager() {
 
   const removeIncome = async (id) => {
     try {
-      const response = await fetch(`/api/incomes/${id}`, {
+      const response = await fetch(`/api/income/${id}`, {
         method: 'DELETE',
       })
 
@@ -100,7 +109,7 @@ export default function HospitalIncomeManager() {
 
   const saveIncome = async (id) => {
     try {
-      const response = await fetch('/api/incomes', {
+      const response = await fetch('/api/income', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -151,96 +160,111 @@ export default function HospitalIncomeManager() {
 
   if (isLoading) {
     return (
-      <Card className="w-full max-w-4xl mx-auto">
-        <CardContent className="p-6">
-          <div className="flex justify-center items-center h-40">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex justify-center items-center h-screen bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-gray-800 dark:to-gray-900">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+      </div>
     )
   }
 
   return (
-    <Card className="w-full max-w-4xl mx-auto bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-gray-800 dark:to-gray-900">
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-3xl font-bold bg-clip-text text-transparent bg-blue-600">
-          Income
-        </CardTitle>
-        <Switch checked={darkMode} onCheckedChange={setDarkMode} className="ml-4" />
-      </CardHeader>
-      <CardContent>
+    <div className="min-h-screen bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-gray-800 dark:to-gray-900 p-4">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex justify-between items-start mb-8">
+          <div className="flex flex-col">
+            <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-blue-600">
+              Income
+            </h1>
+            <span className="text-2xl font-semibold bg-clip-text text-transparent bg-gradient-to-r from-green-500 to-blue-500 mt-2">
+              ${totalSum.toFixed(2)}
+            </span>
+          </div>
+          <div className="flex items-center gap-4">
+            <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white">
+                  <Plus className="mr-2 h-4 w-4" /> Add New Income
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle>Add New Income</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={addIncome} className="space-y-4">
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="incomeName" className="text-cyan-700 dark:text-cyan-300">
+                        Income Name
+                      </Label>
+                      <Input
+                        id="incomeName"
+                        value={newIncome.name}
+                        onChange={(e) => setNewIncome({ ...newIncome, name: e.target.value })}
+                        placeholder="Enter income name"
+                        className="border-cyan-200 dark:border-cyan-700"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="incomeAmount" className="text-green-700 dark:text-green-300">
+                        Amount
+                      </Label>
+                      <Input
+                        id="incomeAmount"
+                        type="number"
+                        value={newIncome.amount}
+                        onChange={(e) => setNewIncome({ ...newIncome, amount: e.target.value })}
+                        placeholder="Enter amount"
+                        step="0.01"
+                        className="border-green-200 dark:border-green-700"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="incomeDate" className="text-blue-700 dark:text-blue-300">
+                        Date
+                      </Label>
+                      <Input
+                        id="incomeDate"
+                        type="date"
+                        value={newIncome.date}
+                        onChange={(e) => setNewIncome({ ...newIncome, date: e.target.value })}
+                        className="border-blue-200 dark:border-blue-700"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="incomeCategory" className="text-indigo-700 dark:text-indigo-300">
+                        Category
+                      </Label>
+                      <Select value={newIncome.category} onValueChange={(value) => setNewIncome({ ...newIncome, category: value })}>
+                        <SelectTrigger className="border-indigo-200 dark:border-indigo-700">
+                          <SelectValue placeholder="Select category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {categories.map((category) => (
+                            <SelectItem key={category} value={category}>
+                              {category}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <Button
+                    type="submit"
+                    className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white"
+                  >
+                    Add Income
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
+            <Switch checked={darkMode} onCheckedChange={setDarkMode} />
+          </div>
+        </div>
+
         {error && (
           <Alert variant="destructive" className="mb-4">
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
-
-        <form onSubmit={addIncome} className="space-y-4 mb-6">
-          <div className="flex flex-wrap gap-4">
-            <div className="flex-1 min-w-[200px]">
-              <Label htmlFor="incomeName" className="text-cyan-700 dark:text-cyan-300">
-                Income Name
-              </Label>
-              <Input
-                id="incomeName"
-                value={newIncome.name}
-                onChange={(e) => setNewIncome({ ...newIncome, name: e.target.value })}
-                placeholder="Enter income name"
-                className="border-cyan-200 dark:border-cyan-700"
-              />
-            </div>
-            <div className="flex-1 min-w-[200px]">
-              <Label htmlFor="incomeAmount" className="text-green-700 dark:text-green-300">
-                Amount
-              </Label>
-              <Input
-                id="incomeAmount"
-                type="number"
-                value={newIncome.amount}
-                onChange={(e) => setNewIncome({ ...newIncome, amount: e.target.value })}
-                placeholder="Enter amount"
-                step="0.01"
-                className="border-green-200 dark:border-green-700"
-              />
-            </div>
-            <div className="flex-1 min-w-[200px]">
-              <Label htmlFor="incomeDate" className="text-blue-700 dark:text-blue-300">
-                Date
-              </Label>
-              <Input
-                id="incomeDate"
-                type="date"
-                value={newIncome.date}
-                onChange={(e) => setNewIncome({ ...newIncome, date: e.target.value })}
-                className="border-blue-200 dark:border-blue-700"
-              />
-            </div>
-            <div className="flex-1 min-w-[200px]">
-              <Label htmlFor="incomeCategory" className="text-indigo-700 dark:text-indigo-300">
-                Category
-              </Label>
-              <Select value={newIncome.category} onValueChange={(value) => setNewIncome({ ...newIncome, category: value })}>
-                <SelectTrigger className="border-indigo-200 dark:border-indigo-700">
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((category) => (
-                    <SelectItem key={category} value={category}>
-                      {category}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <Button
-            type="submit"
-            className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white"
-          >
-            <Plus className="mr-2 h-4 w-4" /> Add New Income
-          </Button>
-        </form>
 
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold text-cyan-700 dark:text-cyan-300">Hospital Income</h3>
@@ -360,17 +384,7 @@ export default function HospitalIncomeManager() {
             </li>
           ))}
         </ul>
-      </CardContent>
-      <CardFooter>
-        <div className="w-full text-right">
-          <p className="text-xl font-semibold">
-            Total Income:{" "}
-            <span className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-green-500 to-blue-500">
-              ${totalSum.toFixed(2)}
-            </span>
-          </p>
-        </div>
-      </CardFooter>
-    </Card>
+      </div>
+    </div>
   )
 }
