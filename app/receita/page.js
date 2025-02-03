@@ -136,16 +136,16 @@ export default function HospitalIncomeManager() {
   }
 
   const categories = [
-    "Consultations",
-    "Surgeries",
-    "Laboratory Tests",
-    "Imaging Services",
-    "Emergency Services",
-    "Pharmacy Sales",
-    "Insurance Claims",
-    "Outpatient Services",
-    "Specialized Procedures",
-    "Other Services",
+    "Consultas",
+    "Cirurgias",
+    "Exames Laboratoriais",
+    "Serviços de Imagem",
+    "Serviços de Emergência",
+    "Vendas de Farmácia",
+    "Planos de Saúde",
+    "Serviços Ambulatoriais",
+    "Procedimentos Especializados",
+    "Outros Serviços",
   ]
 
   const filteredIncomes = incomes.filter((income) => {
@@ -171,71 +171,71 @@ export default function HospitalIncomeManager() {
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-start mb-8">
           <div className="flex flex-col">
-            <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-blue-600">
-              Income
+            <h1 className="text-4xl font-bold text-[#009EE3]">
+              Receitas
             </h1>
-            <span className="text-2xl font-semibold bg-clip-text text-transparent bg-gradient-to-r from-green-500 to-blue-500 mt-2">
-              ${totalSum.toFixed(2)}
+            <span className="text-2xl font-semibold text-[#009EE3] mt-2">
+              R${totalSum.toFixed(2)}
             </span>
           </div>
           <div className="flex items-center gap-4">
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
               <DialogTrigger asChild>
-                <Button className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white">
-                  <Plus className="mr-2 h-4 w-4" /> Add New Income
+                <Button className="bg-[#009EE3] hover:bg-[#0080B7] text-white">
+                  <Plus className="mr-2 h-4 w-4" /> Nova Receita
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                  <DialogTitle>Add New Income</DialogTitle>
+                  <DialogTitle>Adicionar Nova Receita</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={addIncome} className="space-y-4">
                   <div className="space-y-4">
                     <div>
-                      <Label htmlFor="incomeName" className="text-cyan-700 dark:text-cyan-300">
-                        Income Name
+                      <Label htmlFor="incomeName" className="text-[#009EE3] dark:text-[#009EE3]">
+                        Nome da Receita
                       </Label>
                       <Input
                         id="incomeName"
                         value={newIncome.name}
                         onChange={(e) => setNewIncome({ ...newIncome, name: e.target.value })}
-                        placeholder="Enter income name"
-                        className="border-cyan-200 dark:border-cyan-700"
+                        placeholder="Digite o nome da receita"
+                        className="border-[#009EE3] dark:border-[#009EE3]"
                       />
                     </div>
                     <div>
-                      <Label htmlFor="incomeAmount" className="text-green-700 dark:text-green-300">
-                        Amount
+                      <Label htmlFor="incomeAmount" className="text-[#009EE3] dark:text-[#009EE3]">
+                        Valor
                       </Label>
                       <Input
                         id="incomeAmount"
                         type="number"
                         value={newIncome.amount}
                         onChange={(e) => setNewIncome({ ...newIncome, amount: e.target.value })}
-                        placeholder="Enter amount"
+                        placeholder="Digite o valor"
                         step="0.01"
-                        className="border-green-200 dark:border-green-700"
+                        className="border-[#009EE3] dark:border-[#009EE3]"
                       />
                     </div>
                     <div>
-                      <Label htmlFor="incomeDate" className="text-blue-700 dark:text-blue-300">
-                        Date
+                      <Label htmlFor="incomeDate" className="text-[#009EE3] dark:text-[#009EE3]">
+                        Data
                       </Label>
                       <Input
                         id="incomeDate"
                         type="date"
                         value={newIncome.date}
                         onChange={(e) => setNewIncome({ ...newIncome, date: e.target.value })}
-                        className="border-blue-200 dark:border-blue-700"
+                        className="border-[#009EE3] dark:border-[#009EE3]"
                       />
                     </div>
                     <div>
-                      <Label htmlFor="incomeCategory" className="text-indigo-700 dark:text-indigo-300">
-                        Category
+                      <Label htmlFor="incomeCategory" className="text-[#009EE3] dark:text-[#009EE3]">
+                        Categoria
                       </Label>
                       <Select value={newIncome.category} onValueChange={(value) => setNewIncome({ ...newIncome, category: value })}>
-                        <SelectTrigger className="border-indigo-200 dark:border-indigo-700">
-                          <SelectValue placeholder="Select category" />
+                        <SelectTrigger className="border-[#009EE3] dark:border-[#009EE3]">
+                          <SelectValue placeholder="Selecione a categoria" />
                         </SelectTrigger>
                         <SelectContent>
                           {categories.map((category) => (
@@ -249,9 +249,9 @@ export default function HospitalIncomeManager() {
                   </div>
                   <Button
                     type="submit"
-                    className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white"
+                    className="w-full bg-[#009EE3] hover:bg-[#0080B7] text-white"
                   >
-                    Add Income
+                    Adicionar Receita
                   </Button>
                 </form>
               </DialogContent>
@@ -267,14 +267,14 @@ export default function HospitalIncomeManager() {
         )}
 
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold text-cyan-700 dark:text-cyan-300">Hospital Income</h3>
+          <h3 className="text-lg font-semibold text-[#009EE3] dark:text-[#009EE3]">Receitas Hospitalares</h3>
           <div className="flex gap-2">
             <Select value={monthFilter} onValueChange={setMonthFilter}>
-              <SelectTrigger className="w-[180px] border-cyan-200 dark:border-cyan-700">
-                <SelectValue placeholder="Filter by month" />
+              <SelectTrigger className="w-[180px] border-[#009EE3] dark:border-[#009EE3]">
+                <SelectValue placeholder="Filtrar por mês" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Months</SelectItem>
+                <SelectItem value="all">Todos os Meses</SelectItem>
                 {Array.from({ length: 12 }, (_, i) => (
                   <SelectItem key={i + 1} value={(i + 1).toString()}>
                     {new Date(0, i).toLocaleString("default", { month: "long" })}
@@ -284,11 +284,11 @@ export default function HospitalIncomeManager() {
             </Select>
 
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-[180px] border-indigo-200 dark:border-indigo-700">
-                <SelectValue placeholder="Filter by category" />
+              <SelectTrigger className="w-[180px] border-[#009EE3] dark:border-[#009EE3]">
+                <SelectValue placeholder="Filtrar por categoria" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
+                <SelectItem value="all">Todas as Categorias</SelectItem>
                 {categories.map((category) => (
                   <SelectItem key={category} value={category}>
                     {category}
@@ -330,7 +330,7 @@ export default function HospitalIncomeManager() {
                     onValueChange={(value) => setNewIncome({ ...newIncome, category: value })}
                   >
                     <SelectTrigger className="w-48 mr-2">
-                      <SelectValue placeholder="Category" />
+                      <SelectValue placeholder="Categoria" />
                     </SelectTrigger>
                     <SelectContent>
                       {categories.map((category) => (
@@ -341,10 +341,10 @@ export default function HospitalIncomeManager() {
                     </SelectContent>
                   </Select>
                   <Button variant="ghost" size="icon" onClick={() => saveIncome(income._id)}>
-                    <Save className="h-4 w-4 text-green-500" />
+                    <Save className="h-4 w-4 text-[#009EE3]" />
                   </Button>
                   <Button variant="ghost" size="icon" onClick={cancelEdit}>
-                    <X className="h-4 w-4 text-red-500" />
+                    <X className="h-4 w-4 text-[#009EE3]" />
                   </Button>
                 </>
               ) : (
@@ -353,30 +353,30 @@ export default function HospitalIncomeManager() {
                   <div className="flex items-center gap-4">
                     <Badge
                       variant="secondary"
-                      className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                      className="bg-[#009EE3]/10 text-[#009EE3] dark:bg-[#009EE3]/20 dark:text-[#009EE3]"
                     >
                       <DollarSign className="h-3 w-3 mr-1" />
                       {income.amount.toFixed(2)}
                     </Badge>
                     <Badge
                       variant="secondary"
-                      className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                      className="bg-[#009EE3]/10 text-[#009EE3] dark:bg-[#009EE3]/20 dark:text-[#009EE3]"
                     >
                       <Calendar className="h-3 w-3 mr-1" />
                       {new Date(income.date).toLocaleDateString()}
                     </Badge>
                     <Badge
                       variant="secondary"
-                      className="bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200"
+                      className="bg-[#009EE3]/10 text-[#009EE3] dark:bg-[#009EE3]/20 dark:text-[#009EE3]"
                     >
                       <Tag className="h-3 w-3 mr-1" />
                       {income.category}
                     </Badge>
                     <Button variant="ghost" size="icon" onClick={() => editIncome(income._id)}>
-                      <Edit2 className="h-4 w-4 text-blue-500" />
+                      <Edit2 className="h-4 w-4 text-[#009EE3]" />
                     </Button>
                     <Button variant="ghost" size="icon" onClick={() => removeIncome(income._id)}>
-                      <Trash2 className="h-4 w-4 text-red-500" />
+                      <Trash2 className="h-4 w-4 text-[#009EE3]" />
                     </Button>
                   </div>
                 </>

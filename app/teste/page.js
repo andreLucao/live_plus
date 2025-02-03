@@ -25,7 +25,7 @@ const ComponentSelector = () => {
         {/* Toggle Button - Updated positioning */}
         <button
           onClick={toggleSidebar}
-          className="absolute right-[-20px] top-4 bg-purple-600 text-white rounded-full p-2 shadow-lg hover:bg-purple-700 transition-colors duration-200 cursor-pointer z-50"
+          className="absolute right-[-20px] top-4 bg-[#009EE3] text-white rounded-full p-2 shadow-lg hover:bg-[#0080B7] transition-colors duration-200 cursor-pointer z-50"
         >
           {isSidebarOpen ? <X size={16} /> : <Menu size={16} />}
         </button>
@@ -34,8 +34,8 @@ const ComponentSelector = () => {
         <div className="flex flex-col h-full">
           {/* Logo/Header Area */}
           <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-            <h2 className={`font-bold text-xl text-purple-600 dark:text-purple-400 transition-opacity duration-300 ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}>
-              Hospital Manager
+            <h2 className={`font-bold text-xl text-[#009EE3] dark:text-[#009EE3] transition-opacity duration-300 ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}>
+              Gerenciador Hospitalar
             </h2>
           </div>
 
@@ -45,14 +45,14 @@ const ComponentSelector = () => {
               variant="ghost"
               className={`w-full flex items-center gap-3 justify-start px-3 py-2 rounded-lg transition-all duration-200
                 ${activeComponent === 'HospitalBillManager' 
-                  ? 'bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-800' 
+                  ? 'bg-[#009EE3]/10 dark:bg-[#009EE3]/20 text-[#009EE3] dark:text-[#009EE3] hover:bg-[#009EE3]/20 dark:hover:bg-[#009EE3]/30' 
                   : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'}
               `}
               onClick={() => setActiveComponent('HospitalBillManager')}
             >
               <FileText size={20} />
               <span className={`transition-opacity duration-300 ${isSidebarOpen ? 'opacity-100' : 'opacity-0 w-0'}`}>
-                Hospital Bills
+                Despesas Hospitalares
               </span>
             </Button>
 
@@ -60,14 +60,14 @@ const ComponentSelector = () => {
               variant="ghost"
               className={`w-full flex items-center gap-3 justify-start px-3 py-2 rounded-lg transition-all duration-200
                 ${activeComponent === 'HospitalIncomeManager' 
-                  ? 'bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-800' 
+                  ? 'bg-[#009EE3]/10 dark:bg-[#009EE3]/20 text-[#009EE3] dark:text-[#009EE3] hover:bg-[#009EE3]/20 dark:hover:bg-[#009EE3]/30' 
                   : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'}
               `}
               onClick={() => setActiveComponent('HospitalIncomeManager')}
             >
               <PiggyBank size={20} />
               <span className={`transition-opacity duration-300 ${isSidebarOpen ? 'opacity-100' : 'opacity-0 w-0'}`}>
-                Hospital Income
+                Receitas Hospitalares
               </span>
             </Button>
           </nav>

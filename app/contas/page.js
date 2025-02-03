@@ -136,16 +136,16 @@ export default function HospitalBillManager() {
   }
 
   const categories = [
-    "Medical Supplies",
-    "Pharmaceuticals",
-    "Equipment Maintenance",
-    "Staff Salaries",
-    "Patient Care",
-    "Laboratory",
-    "Radiology",
-    "Emergency Services",
-    "Administrative",
-    "Facilities Management",
+    "Material Médico",
+    "Medicamentos",
+    "Manutenção de Equipamentos",
+    "Salários",
+    "Cuidados com Pacientes",
+    "Laboratório",
+    "Radiologia",
+    "Serviços de Emergência",
+    "Administrativo",
+    "Gestão de Instalações",
   ]
 
   const filteredBills = bills.filter((bill) => {
@@ -175,71 +175,71 @@ export default function HospitalBillManager() {
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-start mb-8">
           <div className="flex flex-col">
-            <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-blue-600">
-              Bills
+            <h1 className="text-4xl font-bold text-[#009EE3]">
+              Despesas
             </h1>
-            <span className="text-2xl font-semibold bg-clip-text text-transparent bg-gradient-to-r from-green-500 to-blue-500 mt-2">
-              ${totalSum.toFixed(2)}
+            <span className="text-2xl font-semibold text-[#009EE3] mt-2">
+              R${totalSum.toFixed(2)}
             </span>
           </div>
           <div className="flex items-center gap-4">
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
               <DialogTrigger asChild>
-                <Button className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white">
-                  <Plus className="mr-2 h-4 w-4" /> Add New Expense
+                <Button className="bg-[#009EE3] hover:bg-[#0080B7] text-white">
+                  <Plus className="mr-2 h-4 w-4" /> Nova Despesa
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                  <DialogTitle>Add New Expense</DialogTitle>
+                  <DialogTitle>Adicionar Nova Despesa</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={addBill} className="space-y-4">
                   <div className="space-y-4">
                     <div>
-                      <Label htmlFor="billName" className="text-cyan-700 dark:text-cyan-300">
-                        Expense Name
+                      <Label htmlFor="billName" className="text-[#009EE3] dark:text-[#009EE3]">
+                        Nome da Despesa
                       </Label>
                       <Input
                         id="billName"
                         value={newBill.name}
                         onChange={(e) => setNewBill({ ...newBill, name: e.target.value })}
-                        placeholder="Enter expense name"
-                        className="border-cyan-200 dark:border-cyan-700"
+                        placeholder="Digite o nome da despesa"
+                        className="border-[#009EE3] dark:border-[#009EE3]"
                       />
                     </div>
                     <div>
-                      <Label htmlFor="billAmount" className="text-green-700 dark:text-green-300">
-                        Amount
+                      <Label htmlFor="billAmount" className="text-[#009EE3] dark:text-[#009EE3]">
+                        Valor
                       </Label>
                       <Input
                         id="billAmount"
                         type="number"
                         value={newBill.amount}
                         onChange={(e) => setNewBill({ ...newBill, amount: e.target.value })}
-                        placeholder="Enter amount"
+                        placeholder="Digite o valor"
                         step="0.01"
-                        className="border-green-200 dark:border-green-700"
+                        className="border-[#009EE3] dark:border-[#009EE3]"
                       />
                     </div>
                     <div>
-                      <Label htmlFor="billDate" className="text-blue-700 dark:text-blue-300">
-                        Date
+                      <Label htmlFor="billDate" className="text-[#009EE3] dark:text-[#009EE3]">
+                        Data
                       </Label>
                       <Input
                         id="billDate"
                         type="date"
                         value={newBill.date}
                         onChange={(e) => setNewBill({ ...newBill, date: e.target.value })}
-                        className="border-blue-200 dark:border-blue-700"
+                        className="border-[#009EE3] dark:border-[#009EE3]"
                       />
                     </div>
                     <div>
-                      <Label htmlFor="billCategory" className="text-indigo-700 dark:text-indigo-300">
-                        Category
+                      <Label htmlFor="billCategory" className="text-[#009EE3] dark:text-[#009EE3]">
+                        Categoria
                       </Label>
                       <Select value={newBill.category} onValueChange={(value) => setNewBill({ ...newBill, category: value })}>
-                        <SelectTrigger className="border-indigo-200 dark:border-indigo-700">
-                          <SelectValue placeholder="Select category" />
+                        <SelectTrigger className="border-[#009EE3] dark:border-[#009EE3]">
+                          <SelectValue placeholder="Selecione a categoria" />
                         </SelectTrigger>
                         <SelectContent>
                           {categories.map((category) => (
@@ -253,9 +253,9 @@ export default function HospitalBillManager() {
                   </div>
                   <Button
                     type="submit"
-                    className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white"
+                    className="w-full bg-[#009EE3] hover:bg-[#0080B7] text-white"
                   >
-                    Add Expense
+                    Adicionar Despesa
                   </Button>
                 </form>
               </DialogContent>
@@ -271,14 +271,14 @@ export default function HospitalBillManager() {
         )}
 
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold text-cyan-700 dark:text-cyan-300">Hospital Expenses</h3>
+          <h3 className="text-lg font-semibold text-[#009EE3] dark:text-[#009EE3]">Despesas Hospitalares</h3>
           <div className="flex gap-2">
             <Select value={monthFilter} onValueChange={setMonthFilter}>
-              <SelectTrigger className="w-[180px] border-cyan-200 dark:border-cyan-700">
-                <SelectValue placeholder="Filter by month" />
+              <SelectTrigger className="w-[180px] border-[#009EE3] dark:border-[#009EE3]">
+                <SelectValue placeholder="Filtrar por mês" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Months</SelectItem>
+                <SelectItem value="all">Todos os Meses</SelectItem>
                 {Array.from({ length: 12 }, (_, i) => (
                   <SelectItem key={i + 1} value={(i + 1).toString()}>
                     {new Date(0, i).toLocaleString("default", { month: "long" })}
@@ -288,11 +288,11 @@ export default function HospitalBillManager() {
             </Select>
 
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-[180px] border-indigo-200 dark:border-indigo-700">
-                <SelectValue placeholder="Filter by category" />
+              <SelectTrigger className="w-[180px] border-[#009EE3] dark:border-[#009EE3]">
+                <SelectValue placeholder="Filtrar por categoria" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
+                <SelectItem value="all">Todas as Categorias</SelectItem>
                 {categories.map((category) => (
                   <SelectItem key={category} value={category}>
                     {category}
@@ -345,7 +345,7 @@ export default function HospitalBillManager() {
                     </SelectContent>
                   </Select>
                   <Button variant="ghost" size="icon" onClick={() => saveBill(bill._id)}>
-                    <Save className="h-4 w-4 text-green-500" />
+                    <Save className="h-4 w-4 text-[#009EE3]" />
                   </Button>
                   <Button variant="ghost" size="icon" onClick={cancelEdit}>
                     <X className="h-4 w-4 text-red-500" />
@@ -357,27 +357,27 @@ export default function HospitalBillManager() {
                   <div className="flex items-center gap-4">
                     <Badge
                       variant="secondary"
-                      className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                      className="bg-[#009EE3]/10 text-[#009EE3] dark:bg-[#009EE3]/20 dark:text-[#009EE3]"
                     >
                       <DollarSign className="h-3 w-3 mr-1" />
                       {bill.amount.toFixed(2)}
                     </Badge>
                     <Badge
                       variant="secondary"
-                      className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                      className="bg-[#009EE3]/10 text-[#009EE3] dark:bg-[#009EE3]/20 dark:text-[#009EE3]"
                     >
                       <Calendar className="h-3 w-3 mr-1" />
                       {new Date(bill.date).toLocaleDateString()}
                     </Badge>
                     <Badge
                       variant="secondary"
-                      className="bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200"
+                      className="bg-[#009EE3]/10 text-[#009EE3] dark:bg-[#009EE3]/20 dark:text-[#009EE3]"
                     >
                       <Tag className="h-3 w-3 mr-1" />
                       {bill.category}
                     </Badge>
                     <Button variant="ghost" size="icon" onClick={() => editBill(bill._id)}>
-                      <Edit2 className="h-4 w-4 text-blue-500" />
+                      <Edit2 className="h-4 w-4 text-[#009EE3]" />
                     </Button>
                     <Button variant="ghost" size="icon" onClick={() => removeBill(bill._id)}>
                       <Trash2 className="h-4 w-4 text-red-500" />
