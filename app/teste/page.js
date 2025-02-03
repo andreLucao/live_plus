@@ -14,18 +14,18 @@ const ComponentSelector = () => {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
       {/* Sidebar */}
       <div 
         className={`
-          fixed h-full bg-white shadow-lg transition-all duration-300 ease-in-out
+          fixed h-full bg-white dark:bg-gray-800 shadow-lg transition-all duration-300 ease-in-out
           ${isSidebarOpen ? 'w-64' : 'w-16'}
         `}
       >
-        {/* Toggle Button */}
+        {/* Toggle Button - Updated positioning */}
         <button
           onClick={toggleSidebar}
-          className="absolute right-0 top-4 transform translate-x-1/2 bg-purple-600 text-white rounded-full p-2 shadow-lg hover:bg-purple-700 transition-colors duration-200"
+          className="absolute right-[-20px] top-4 bg-purple-600 text-white rounded-full p-2 shadow-lg hover:bg-purple-700 transition-colors duration-200 cursor-pointer z-50"
         >
           {isSidebarOpen ? <X size={16} /> : <Menu size={16} />}
         </button>
@@ -33,20 +33,20 @@ const ComponentSelector = () => {
         {/* Sidebar Content */}
         <div className="flex flex-col h-full">
           {/* Logo/Header Area */}
-          <div className="p-4 border-b border-gray-200">
-            <h2 className={`font-bold text-xl text-purple-600 transition-opacity duration-300 ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}>
+          <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+            <h2 className={`font-bold text-xl text-purple-600 dark:text-purple-400 transition-opacity duration-300 ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}>
               Hospital Manager
             </h2>
           </div>
 
-          {/* Navigation Items */}
+          {/* Navigation Items - Updated with dark mode styles */}
           <nav className="flex-1 pt-6 px-2 space-y-2">
             <Button
               variant="ghost"
               className={`w-full flex items-center gap-3 justify-start px-3 py-2 rounded-lg transition-all duration-200
                 ${activeComponent === 'HospitalBillManager' 
-                  ? 'bg-purple-100 text-purple-700 hover:bg-purple-200' 
-                  : 'hover:bg-gray-100 text-gray-700'}
+                  ? 'bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-800' 
+                  : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'}
               `}
               onClick={() => setActiveComponent('HospitalBillManager')}
             >
@@ -60,8 +60,8 @@ const ComponentSelector = () => {
               variant="ghost"
               className={`w-full flex items-center gap-3 justify-start px-3 py-2 rounded-lg transition-all duration-200
                 ${activeComponent === 'HospitalIncomeManager' 
-                  ? 'bg-purple-100 text-purple-700 hover:bg-purple-200' 
-                  : 'hover:bg-gray-100 text-gray-700'}
+                  ? 'bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-800' 
+                  : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'}
               `}
               onClick={() => setActiveComponent('HospitalIncomeManager')}
             >
