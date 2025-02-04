@@ -28,6 +28,8 @@ export default function HospitalIncomeManager() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState("")
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [yearFilter, setYearFilter] = useState("all")
+  const [nameFilter, setNameFilter] = useState("")
 
   useEffect(() => {
     fetchIncomes()
@@ -153,8 +155,17 @@ export default function HospitalIncomeManager() {
       new Date(income.date).getMonth() === Number.parseInt(monthFilter) - 1
     const categoryMatch = categoryFilter === "all" || 
       income.category === categoryFilter
-    return monthMatch && categoryMatch
+    const yearMatch = yearFilter === "all" ||
+      new Date(income.date).getFullYear().toString() === yearFilter
+    const nameMatch = nameFilter === "" ||
+      income.name.toLowerCase().includes(nameFilter.toLowerCase())
+    return monthMatch && categoryMatch && yearMatch && nameMatch
   })
+
+  // Get unique years from incomes
+  const years = [...new Set(incomes.map(income => 
+    new Date(income.date).getFullYear()
+  ))].sort((a, b) => b - a) // Sort descending
 
   const totalSum = filteredIncomes.reduce((sum, income) => sum + income.amount, 0)
 
@@ -266,11 +277,20 @@ export default function HospitalIncomeManager() {
           </Alert>
         )}
 
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
           <h3 className="text-lg font-semibold text-[#009EE3] dark:text-[#009EE3]">Receitas Hospitalares</h3>
-          <div className="flex gap-2">
+          <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+            {/* Name Filter */}
+            <Input
+              placeholder="Filtrar por nome"
+              value={nameFilter}
+              onChange={(e) => setNameFilter(e.target.value)}
+              className="w-full md:w-[200px] border-[#009EE3] dark:border-[#009EE3]"
+            />
+
+            {/* Month Filter */}
             <Select value={monthFilter} onValueChange={setMonthFilter}>
-              <SelectTrigger className="w-[180px] border-[#009EE3] dark:border-[#009EE3]">
+              <SelectTrigger className="w-full md:w-[180px] border-[#009EE3] dark:border-[#009EE3]">
                 <SelectValue placeholder="Filtrar por mês" />
               </SelectTrigger>
               <SelectContent>
@@ -283,8 +303,24 @@ export default function HospitalIncomeManager() {
               </SelectContent>
             </Select>
 
+            {/* Year Filter */}
+            <Select value={yearFilter} onValueChange={setYearFilter}>
+              <SelectTrigger className="w-full md:w-[180px] border-[#009EE3] dark:border-[#009EE3]">
+                <SelectValue placeholder="Filtrar por ano" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os Anos</SelectItem>
+                {years.map((year) => (
+                  <SelectItem key={year} value={year.toString()}>
+                    {year}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Category Filter */}
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-[180px] border-[#009EE3] dark:border-[#009EE3]">
+              <SelectTrigger className="w-full md:w-[180px] border-[#009EE3] dark:border-[#009EE3]">
                 <SelectValue placeholder="Filtrar por categoria" />
               </SelectTrigger>
               <SelectContent>

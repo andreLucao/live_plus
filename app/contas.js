@@ -28,6 +28,8 @@ export default function HospitalBillManager() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState("")
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [yearFilter, setYearFilter] = useState("all")
+  const [nameFilter, setNameFilter] = useState("")
 
   useEffect(() => {
     fetchBills()
@@ -153,10 +155,19 @@ export default function HospitalBillManager() {
       new Date(bill.date).getMonth() === Number.parseInt(monthFilter) - 1
     const categoryMatch = categoryFilter === "all" || 
       bill.category === categoryFilter
-    return monthMatch && categoryMatch
+    const yearMatch = yearFilter === "all" ||
+      new Date(bill.date).getFullYear().toString() === yearFilter
+    const nameMatch = nameFilter === "" ||
+      bill.name.toLowerCase().includes(nameFilter.toLowerCase())
+    return monthMatch && categoryMatch && yearMatch && nameMatch
   })
 
   const totalSum = filteredBills.reduce((sum, bill) => sum + bill.amount, 0)
+
+  // Get unique years from bills
+  const years = [...new Set(bills.map(bill => 
+    new Date(bill.date).getFullYear()
+  ))].sort((a, b) => b - a) // Sort descending
 
   if (isLoading) {
     return (
@@ -273,6 +284,13 @@ export default function HospitalBillManager() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
           <h3 className="text-lg font-semibold text-[#009EE3] dark:text-[#009EE3]">Despesas Hospitalares</h3>
           <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+            <Input
+              placeholder="Filtrar por nome"
+              value={nameFilter}
+              onChange={(e) => setNameFilter(e.target.value)}
+              className="w-full md:w-[200px] border-[#009EE3] dark:border-[#009EE3]"
+            />
+
             <Select value={monthFilter} onValueChange={setMonthFilter}>
               <SelectTrigger className="w-full md:w-[180px] border-[#009EE3] dark:border-[#009EE3]">
                 <SelectValue placeholder="Filtrar por mês" />
@@ -282,6 +300,20 @@ export default function HospitalBillManager() {
                 {Array.from({ length: 12 }, (_, i) => (
                   <SelectItem key={i + 1} value={(i + 1).toString()}>
                     {new Date(0, i).toLocaleString("default", { month: "long" })}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={yearFilter} onValueChange={setYearFilter}>
+              <SelectTrigger className="w-full md:w-[180px] border-[#009EE3] dark:border-[#009EE3]">
+                <SelectValue placeholder="Filtrar por ano" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os Anos</SelectItem>
+                {years.map((year) => (
+                  <SelectItem key={year} value={year.toString()}>
+                    {year}
                   </SelectItem>
                 ))}
               </SelectContent>

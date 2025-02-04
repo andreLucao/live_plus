@@ -1,12 +1,13 @@
 'use client'
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import HospitalBillManager from '../contas/page';
-import HospitalIncomeManager from '../receita/page';
-import { Menu, X, FileText, PiggyBank } from 'lucide-react';
+import HospitalBillManager from '@/app/contas.js';
+import HospitalIncomeManager from '@/app/receita.js';
+import { Menu, X, FileText, PiggyBank, LayoutDashboard } from 'lucide-react';
+import DashboardComponent from '@/app/dashboard.js';
 
 const ComponentSelector = () => {
-  const [activeComponent, setActiveComponent] = useState('HospitalBillManager');
+  const [activeComponent, setActiveComponent] = useState('Dashboard');
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
 
@@ -75,6 +76,22 @@ const ComponentSelector = () => {
             <Button
               variant="ghost"
               className={`w-full flex items-center gap-3 justify-start px-3 py-2 rounded-lg transition-all duration-200
+                ${activeComponent === 'Dashboard' 
+                  ? 'bg-[#009EE3]/10 dark:bg-[#009EE3]/20 text-[#009EE3] dark:text-[#009EE3] hover:bg-[#009EE3]/20 dark:hover:bg-[#009EE3]/30' 
+                  : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'}
+              `}
+              onClick={() => {
+                setActiveComponent('Dashboard');
+                if (isMobile) setSidebarOpen(false);
+              }}
+            >
+              <LayoutDashboard size={20} />
+              <span>Dashboard</span>
+            </Button>
+
+            <Button
+              variant="ghost"
+              className={`w-full flex items-center gap-3 justify-start px-3 py-2 rounded-lg transition-all duration-200
                 ${activeComponent === 'HospitalBillManager' 
                   ? 'bg-[#009EE3]/10 dark:bg-[#009EE3]/20 text-[#009EE3] dark:text-[#009EE3] hover:bg-[#009EE3]/20 dark:hover:bg-[#009EE3]/30' 
                   : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'}
@@ -116,7 +133,9 @@ const ComponentSelector = () => {
         `}
       >
         <div className="p-4 md:p-8 pt-16 md:pt-8">
-          {activeComponent === 'HospitalBillManager' ? <HospitalBillManager /> : <HospitalIncomeManager />}
+          {activeComponent === 'Dashboard' ? <DashboardComponent /> :
+           activeComponent === 'HospitalBillManager' ? <HospitalBillManager /> : 
+           <HospitalIncomeManager />}
         </div>
       </div>
     </div>
