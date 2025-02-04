@@ -270,11 +270,11 @@ export default function HospitalBillManager() {
           </Alert>
         )}
 
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
           <h3 className="text-lg font-semibold text-[#009EE3] dark:text-[#009EE3]">Despesas Hospitalares</h3>
-          <div className="flex gap-2">
+          <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
             <Select value={monthFilter} onValueChange={setMonthFilter}>
-              <SelectTrigger className="w-[180px] border-[#009EE3] dark:border-[#009EE3]">
+              <SelectTrigger className="w-full md:w-[180px] border-[#009EE3] dark:border-[#009EE3]">
                 <SelectValue placeholder="Filtrar por mês" />
               </SelectTrigger>
               <SelectContent>
@@ -288,7 +288,7 @@ export default function HospitalBillManager() {
             </Select>
 
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-[180px] border-[#009EE3] dark:border-[#009EE3]">
+              <SelectTrigger className="w-full md:w-[180px] border-[#009EE3] dark:border-[#009EE3]">
                 <SelectValue placeholder="Filtrar por categoria" />
               </SelectTrigger>
               <SelectContent>
@@ -307,10 +307,10 @@ export default function HospitalBillManager() {
           {filteredBills.map((bill) => (
             <li
               key={bill._id}
-              className="flex justify-between items-center p-3 bg-white dark:bg-gray-800 rounded-md shadow-md transition-all duration-300 hover:shadow-lg"
+              className="flex flex-col md:flex-row justify-between items-start md:items-center p-3 bg-white dark:bg-gray-800 rounded-md shadow-md transition-all duration-300 hover:shadow-lg gap-4"
             >
               {editingId === bill._id ? (
-                <>
+                <div className="flex flex-col md:flex-row w-full gap-2">
                   <Input
                     value={newBill.name || bill.name}
                     onChange={(e) => setNewBill({ ...newBill, name: e.target.value })}
@@ -350,11 +350,11 @@ export default function HospitalBillManager() {
                   <Button variant="ghost" size="icon" onClick={cancelEdit}>
                     <X className="h-4 w-4 text-red-500" />
                   </Button>
-                </>
+                </div>
               ) : (
                 <>
-                  <span className="font-medium text-gray-800 dark:text-gray-200">{bill.name}</span>
-                  <div className="flex items-center gap-4">
+                  <span className="font-medium text-gray-800 dark:text-gray-200 break-all">{bill.name}</span>
+                  <div className="flex flex-wrap items-center gap-2 md:gap-4">
                     <Badge
                       variant="secondary"
                       className="bg-[#009EE3]/10 text-[#009EE3] dark:bg-[#009EE3]/20 dark:text-[#009EE3]"

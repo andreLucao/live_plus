@@ -303,7 +303,7 @@ export default function HospitalIncomeManager() {
           {filteredIncomes.map((income) => (
             <li
               key={income._id}
-              className="flex justify-between items-center p-3 bg-white dark:bg-gray-800 rounded-md shadow-md transition-all duration-300 hover:shadow-lg"
+              className="flex flex-col md:flex-row justify-between items-start md:items-center p-3 bg-white dark:bg-gray-800 rounded-md shadow-md transition-all duration-300 hover:shadow-lg gap-4"
             >
               {editingId === income._id ? (
                 <>
@@ -349,8 +349,8 @@ export default function HospitalIncomeManager() {
                 </>
               ) : (
                 <>
-                  <span className="font-medium text-gray-800 dark:text-gray-200">{income.name}</span>
-                  <div className="flex items-center gap-4">
+                  <span className="font-medium text-gray-800 dark:text-gray-200 break-all">{income.name}</span>
+                  <div className="flex flex-wrap items-center gap-2 md:gap-4">
                     <Badge
                       variant="secondary"
                       className="bg-[#009EE3]/10 text-[#009EE3] dark:bg-[#009EE3]/20 dark:text-[#009EE3]"
