@@ -193,7 +193,7 @@ export default function HospitalDashboardComponent() {
             <DollarSign className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
+            <div className="text-2xl font-bold text-[#009EE3]">
               R${totalIncome.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </div>
             <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
@@ -215,7 +215,7 @@ export default function HospitalDashboardComponent() {
             <TrendingDown className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-500">
+            <div className="text-2xl font-bold text-[#009EE3]">
               R${totalExpenses.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </div>
             <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
@@ -237,7 +237,7 @@ export default function HospitalDashboardComponent() {
             <TrendingUp className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${profit >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+            <div className={`text-2xl font-bold ${profit >= 0 ? 'text-[#009EE3]' : 'text-red-500'}`}>
               R${profit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </div>
             <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
@@ -276,8 +276,8 @@ export default function HospitalDashboardComponent() {
                     }}
                   />
                   <Legend />
-                  <Bar dataKey="income" name="Receitas" fill="#3b82f6" />
-                  <Bar dataKey="expense" name="Despesas" fill="#ef4444" />
+                  <Bar dataKey="income" name="Receitas" fill="#2196F3" />
+                  <Bar dataKey="expense" name="Despesas" fill="#F44336" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
