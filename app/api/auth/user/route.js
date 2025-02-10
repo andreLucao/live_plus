@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
-import { connectToDatabase } from '@/lib/mongodb';
-import User from '@/models/User';
+import { connectDB } from '@/lib/mongodb';
+import User from '@/lib//models/User';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-jwt-secret';
 
@@ -18,7 +18,7 @@ export async function GET() {
     const decoded = jwt.verify(token, JWT_SECRET);
     
     // Get user from database
-    await connectToDatabase();
+    await connectDB();
     const user = await User.findOne({ email: decoded.email });
 
     if (!user) {
