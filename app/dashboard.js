@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts'
-import { TrendingUp, TrendingDown, DollarSign, Calendar, AlertCircle } from "lucide-react"
+import { TrendingUp, TrendingDown, DollarSign, Calendar, AlertCircle, LayoutDashboard  } from "lucide-react"
+
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -151,9 +152,11 @@ export default function HospitalDashboardComponent() {
       )}
 
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+        
+      <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          <LayoutDashboard size={20} />
           Dashboard Financeiro
-        </h1>
+      </h1>
         
         <div className="flex flex-col md:flex-row gap-4 items-end">
           <div className="flex flex-col gap-2">
@@ -190,10 +193,10 @@ export default function HospitalDashboardComponent() {
             <CardTitle className="text-sm font-medium text-gray-700 dark:text-gray-300">
               Receita Total
             </CardTitle>
-            <DollarSign className="h-4 w-4 text-blue-600" />
+            <DollarSign className="h-4 w-4 text-[#1e1e1e]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-[#009EE3]">
+            <div className="text-2xl font-bold text-[#1e1e1e]">
               R${totalIncome.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </div>
             <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
@@ -212,10 +215,10 @@ export default function HospitalDashboardComponent() {
             <CardTitle className="text-sm font-medium text-gray-700 dark:text-gray-300">
               Despesa Total
             </CardTitle>
-            <TrendingDown className="h-4 w-4 text-red-500" />
+            <TrendingDown className="h-4 w-4 text-[#1e1e1e]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-[#009EE3]">
+            <div className="text-2xl font-bold text-[#1e1e1e]">
               R${totalExpenses.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </div>
             <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
@@ -234,10 +237,10 @@ export default function HospitalDashboardComponent() {
             <CardTitle className="text-sm font-medium text-gray-700 dark:text-gray-300">
               Resultado
             </CardTitle>
-            <TrendingUp className="h-4 w-4 text-green-500" />
+            <TrendingUp className="h-4 w-4 text-[#1e1e1e]" />
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${profit >= 0 ? 'text-[#009EE3]' : 'text-red-500'}`}>
+            <div className={`text-2xl font-bold ${profit >= 0 ? 'text-[#1e1e1e]' : 'text-red-500'}`}>
               R${profit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </div>
             <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
