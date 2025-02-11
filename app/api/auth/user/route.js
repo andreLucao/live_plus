@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
-import { connectDB } from '@/lib/mongodb';
-import User from '@/lib//models/User';
+import { connectDB, getTenantModel } from '@/lib/mongodb';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-jwt-secret';
 
@@ -17,8 +16,11 @@ export async function GET() {
 
     const decoded = jwt.verify(token, JWT_SECRET);
     
+    // Connect to tenant's database
+    const tenantConnection = await connectDB(decoded.tenantPath);
+    const User = getTenantModel(tenantConnection, 'User');
+    
     // Get user from database
-    await connectDB();
     const user = await User.findOne({ email: decoded.email });
 
     if (!user) {
@@ -27,6 +29,8 @@ export async function GET() {
 
     return NextResponse.json({
       email: user.email,
+      tenantPath: user.tenantPath,
+      role: user.role,
       createdAt: user.createdAt,
       lastLoginAt: user.lastLoginAt,
       authenticated: true

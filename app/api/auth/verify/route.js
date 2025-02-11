@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 import { SignJWT } from 'jose';
-import { connectDB } from '@/lib/mongodb';
+import { connectDB, getTenantDatabases, getTenantModel } from '@/lib/mongodb';
 import User from '@/lib/models/User';
 
 const EMAIL_SECRET = process.env.EMAIL_SECRET || 'your-secret-key';
@@ -20,23 +20,54 @@ export async function GET(request) {
     // Verify the email token
     const decoded = jwt.verify(token, EMAIL_SECRET);
     
-    // Connect to MongoDB
+    // Connect to MongoDB main database
     await connectDB();
-
+    
+    const emailDomain = decoded.email.split('@')[1].split('.')[0];
+    
+    // Get list of existing tenant databases
+    const existingDatabases = await getTenantDatabases();
+    const isTenantNew = !existingDatabases.includes(emailDomain);
+    
+    // Connect to tenant's database
+    const tenantConnection = await connectDB(emailDomain);
+    const User = getTenantModel(tenantConnection, 'User');
+    
     // Find or create user
-    const user = await User.findOneAndUpdate(
-      { email: decoded.email },
-      { 
-        $setOnInsert: { createdAt: new Date() },
-        $set: { lastLoginAt: new Date() }
-      },
-      { upsert: true, new: true }
-    );
+    let user = await User.findOne({ email: decoded.email });
+    
+    if (user && !user.tenantPath) {
+      user.tenantPath = emailDomain;
+      await user.save();
+    } else if (!user) {
+      // Create new user
+      const newUser = new User({
+        email: decoded.email,
+        tenantPath: emailDomain,
+        role: isTenantNew ? 'owner' : 'user',
+        createdAt: new Date(),
+        lastLoginAt: new Date()
+      });
+      await newUser.save();
+      user = newUser;
+    }
+
+    // If this is a new tenant, initialize their database
+    if (isTenantNew) {
+      await connectDB(emailDomain);
+      console.log(`Initialized new tenant database: ${emailDomain}`);
+    }
+
+    // Update last login
+    user.lastLoginAt = new Date();
+    await user.save();
 
     // Add debug logging
     console.log('User login:', { 
       userId: user._id,
       email: user.email,
+      tenantPath: user.tenantPath,
+      role: user.role,
       token: token.substring(0, 10) + '...' // Only log part of the token for security
     });
     
@@ -45,6 +76,8 @@ export async function GET(request) {
     const sessionToken = await new SignJWT({ 
       email: decoded.email,
       userId: user._id.toString(),
+      tenantPath: user.tenantPath,
+      role: user.role,
       authenticated: true 
     })
       .setProtectedHeader({ alg: 'HS256' })
