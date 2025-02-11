@@ -1,9 +1,10 @@
+//app/contas.js
 "use client"
 
 import { useState, useEffect } from "react"
-import { Plus, Trash2, Edit2, Save, X, DollarSign, Calendar, Tag } from "lucide-react"
+import { Plus, Trash2, Edit2, Save, X, DollarSign, Calendar, Tag, AlertCircle, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -19,6 +20,7 @@ import {
 } from "@/components/ui/dialog"
 
 export default function HospitalBillManager() {
+  // Estado para armazenar a lista de despesas e controles da interface
   const [bills, setBills] = useState([])
   const [newBill, setNewBill] = useState({ name: "", amount: "", date: "", category: "" })
   const [monthFilter, setMonthFilter] = useState("all")
@@ -30,11 +32,18 @@ export default function HospitalBillManager() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [yearFilter, setYearFilter] = useState("all")
   const [nameFilter, setNameFilter] = useState("")
+  const [startDate, setStartDate] = useState("")
+  const [endDate, setEndDate] = useState("")
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [deleteConfirmation, setDeleteConfirmation] = useState("")
+  const [itemToDelete, setItemToDelete] = useState(null)
 
+  // Efeito para carregar as despesas ao montar o componente
   useEffect(() => {
     fetchBills()
   }, [])
 
+  // Efeito para controlar o modo escuro
   useEffect(() => {
     if (darkMode) {
       document.documentElement.classList.add("dark")
@@ -43,6 +52,7 @@ export default function HospitalBillManager() {
     }
   }, [darkMode])
 
+  // Função para buscar as despesas da API
   const fetchBills = async () => {
     try {
       const response = await fetch('/api/bills')
@@ -52,12 +62,13 @@ export default function HospitalBillManager() {
       setError("")
     } catch (error) {
       console.error('Error fetching bills:', error)
-      setError("Failed to load bills. Please try again later.")
+      setError("Falha ao carregar as despesas. Por favor, tente novamente mais tarde.")
     } finally {
       setIsLoading(false)
     }
   }
 
+  // Função para adicionar uma nova despesa
   const addBill = async (e) => {
     e.preventDefault()
     if (newBill.name && newBill.amount && newBill.date && newBill.category) {
@@ -78,8 +89,24 @@ export default function HospitalBillManager() {
         setError("")
       } catch (error) {
         console.error('Error adding bill:', error)
-        setError("Failed to add bill. Please try again.")
+        setError("Falha ao adicionar despesa. Por favor, tente novamente.")
       }
+    }
+  }
+
+  // Funções para gerenciar a exclusão de despesas
+  const handleDeleteClick = (bill) => {
+    setItemToDelete(bill)
+    setIsDeleteModalOpen(true)
+    setDeleteConfirmation("")
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (deleteConfirmation === itemToDelete.name) {
+      await removeBill(itemToDelete._id)
+      setIsDeleteModalOpen(false)
+      setItemToDelete(null)
+      setDeleteConfirmation("")
     }
   }
 
@@ -94,10 +121,11 @@ export default function HospitalBillManager() {
       setError("")
     } catch (error) {
       console.error('Error deleting bill:', error)
-      setError("Failed to delete bill. Please try again.")
+      setError("Falha ao excluir despesa. Por favor, tente novamente.")
     }
   }
 
+  // Funções para edição de despesas
   const editBill = (id) => {
     const billToEdit = bills.find(bill => bill._id === id)
     setNewBill({
@@ -128,7 +156,7 @@ export default function HospitalBillManager() {
       setError("")
     } catch (error) {
       console.error('Error updating bill:', error)
-      setError("Failed to update bill. Please try again.")
+      setError("Falha ao atualizar despesa. Por favor, tente novamente.")
     }
   }
 
@@ -137,6 +165,21 @@ export default function HospitalBillManager() {
     setNewBill({ name: "", amount: "", date: "", category: "" })
   }
 
+  // Função para filtrar dados por data
+  const filterData = (data) => {
+    if (!startDate && !endDate) return data
+    
+    return data.filter(item => {
+      const itemDate = new Date(item.date)
+      const start = startDate ? new Date(startDate) : new Date(0)
+      const end = endDate ? new Date(endDate) : new Date()
+      end.setHours(23, 59, 59, 999)
+      
+      return itemDate >= start && itemDate <= end
+    })
+  }
+
+  // Lista de categorias disponíveis
   const categories = [
     "Material Médico",
     "Medicamentos",
@@ -150,7 +193,8 @@ export default function HospitalBillManager() {
     "Gestão de Instalações",
   ]
 
-  const filteredBills = bills.filter((bill) => {
+  // Filtragem das despesas
+  const filteredBills = filterData(bills).filter((bill) => {
     const monthMatch = monthFilter === "all" || 
       new Date(bill.date).getMonth() === Number.parseInt(monthFilter) - 1
     const categoryMatch = categoryFilter === "all" || 
@@ -162,38 +206,41 @@ export default function HospitalBillManager() {
     return monthMatch && categoryMatch && yearMatch && nameMatch
   })
 
+  // Cálculo do total das despesas filtradas
   const totalSum = filteredBills.reduce((sum, bill) => sum + bill.amount, 0)
 
-  // Get unique years from bills
+  // Anos únicos para filtro
   const years = [...new Set(bills.map(bill => 
     new Date(bill.date).getFullYear()
-  ))].sort((a, b) => b - a) // Sort descending
+  ))].sort((a, b) => b - a)
 
+  // Renderização do estado de carregamento
   if (isLoading) {
     return (
-      <Card className="w-full max-w-4xl mx-auto">
-        <CardContent className="p-6">
-          <div className="flex justify-center items-center h-40">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
     )
   }
 
+  // Renderização principal do componente
   return (
-    <div className="min-h-screen bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-gray-800 dark:to-gray-900 p-4">
+    <div className="space-y-6 p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-start mb-8">
+        {/* Cabeçalho */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
           <div className="flex flex-col">
-            <h1 className="text-4xl font-bold text-[#009EE3]">
-              Despesas
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <FileText size={20} />
+            Gestão de Despesas
             </h1>
-            <span className="text-2xl font-semibold text-[#009EE3] mt-2">
-              R${totalSum.toFixed(2)}
+            <span className="text-2xl font-semibold text-gray-700 dark:text-gray-300 mt-2">
+              Total: R$ {totalSum.toFixed(2)}
             </span>
           </div>
+
           <div className="flex items-center gap-4">
+            {/* Modal para adicionar nova despesa */}
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
               <DialogTrigger asChild>
                 <Button className="bg-[#009EE3] hover:bg-[#0080B7] text-white">
@@ -207,7 +254,7 @@ export default function HospitalBillManager() {
                 <form onSubmit={addBill} className="space-y-4">
                   <div className="space-y-4">
                     <div>
-                      <Label htmlFor="billName" className="text-[#009EE3] dark:text-[#009EE3]">
+                      <Label htmlFor="billName">
                         Nome da Despesa
                       </Label>
                       <Input
@@ -215,11 +262,10 @@ export default function HospitalBillManager() {
                         value={newBill.name}
                         onChange={(e) => setNewBill({ ...newBill, name: e.target.value })}
                         placeholder="Digite o nome da despesa"
-                        className="border-[#009EE3] dark:border-[#009EE3]"
                       />
                     </div>
                     <div>
-                      <Label htmlFor="billAmount" className="text-[#009EE3] dark:text-[#009EE3]">
+                      <Label htmlFor="billAmount">
                         Valor
                       </Label>
                       <Input
@@ -229,11 +275,10 @@ export default function HospitalBillManager() {
                         onChange={(e) => setNewBill({ ...newBill, amount: e.target.value })}
                         placeholder="Digite o valor"
                         step="0.01"
-                        className="border-[#009EE3] dark:border-[#009EE3]"
                       />
                     </div>
                     <div>
-                      <Label htmlFor="billDate" className="text-[#009EE3] dark:text-[#009EE3]">
+                      <Label htmlFor="billDate">
                         Data
                       </Label>
                       <Input
@@ -241,15 +286,17 @@ export default function HospitalBillManager() {
                         type="date"
                         value={newBill.date}
                         onChange={(e) => setNewBill({ ...newBill, date: e.target.value })}
-                        className="border-[#009EE3] dark:border-[#009EE3]"
                       />
                     </div>
                     <div>
-                      <Label htmlFor="billCategory" className="text-[#009EE3] dark:text-[#009EE3]">
+                      <Label htmlFor="billCategory">
                         Categoria
                       </Label>
-                      <Select value={newBill.category} onValueChange={(value) => setNewBill({ ...newBill, category: value })}>
-                        <SelectTrigger className="border-[#009EE3] dark:border-[#009EE3]">
+                      <Select 
+                        value={newBill.category} 
+                        onValueChange={(value) => setNewBill({ ...newBill, category: value })}
+                      >
+                        <SelectTrigger>
                           <SelectValue placeholder="Selecione a categoria" />
                         </SelectTrigger>
                         <SelectContent>
@@ -262,10 +309,7 @@ export default function HospitalBillManager() {
                       </Select>
                     </div>
                   </div>
-                  <Button
-                    type="submit"
-                    className="w-full bg-[#009EE3] hover:bg-[#0080B7] text-white"
-                  >
+                  <Button type="submit" className="w-full">
                     Adicionar Despesa
                   </Button>
                 </form>
@@ -275,52 +319,54 @@ export default function HospitalBillManager() {
           </div>
         </div>
 
+        {/* Mensagem de erro */}
         {error && (
           <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
 
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
-          <h3 className="text-lg font-semibold text-[#009EE3] dark:text-[#009EE3]">Despesas Hospitalares</h3>
-          <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+        {/* Previous code remains the same until the filters section */}
+
+        {/* Filtros */}
+        <div className="flex flex-col md:flex-row justify-end items-start md:items-center gap-4 mb-6">
+          <div className="flex flex-col md:flex-row gap-4 items-end">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="start-date">
+                Data Inicial
+              </Label>
+              <Input
+                id="start-date"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full md:w-40"
+              />
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="end-date">
+                Data Final
+              </Label>
+              <Input
+                id="end-date"
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full md:w-40"
+              />
+            </div>
+
             <Input
               placeholder="Filtrar por nome"
               value={nameFilter}
               onChange={(e) => setNameFilter(e.target.value)}
-              className="w-full md:w-[200px] border-[#009EE3] dark:border-[#009EE3]"
+              className="w-full md:w-[200px]"
             />
 
-            <Select value={monthFilter} onValueChange={setMonthFilter}>
-              <SelectTrigger className="w-full md:w-[180px] border-[#009EE3] dark:border-[#009EE3]">
-                <SelectValue placeholder="Filtrar por mês" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os Meses</SelectItem>
-                {Array.from({ length: 12 }, (_, i) => (
-                  <SelectItem key={i + 1} value={(i + 1).toString()}>
-                    {new Date(0, i).toLocaleString("default", { month: "long" })}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={yearFilter} onValueChange={setYearFilter}>
-              <SelectTrigger className="w-full md:w-[180px] border-[#009EE3] dark:border-[#009EE3]">
-                <SelectValue placeholder="Filtrar por ano" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os Anos</SelectItem>
-                {years.map((year) => (
-                  <SelectItem key={year} value={year.toString()}>
-                    {year}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-full md:w-[180px] border-[#009EE3] dark:border-[#009EE3]">
+              <SelectTrigger className="w-full md:w-[180px]">
                 <SelectValue placeholder="Filtrar por categoria" />
               </SelectTrigger>
               <SelectContent>
@@ -335,92 +381,121 @@ export default function HospitalBillManager() {
           </div>
         </div>
 
-        <ul className="space-y-2">
-          {filteredBills.map((bill) => (
-            <li
-              key={bill._id}
-              className="flex flex-col md:flex-row justify-between items-start md:items-center p-3 bg-white dark:bg-gray-800 rounded-md shadow-md transition-all duration-300 hover:shadow-lg gap-4"
-            >
-              {editingId === bill._id ? (
-                <div className="flex flex-col md:flex-row w-full gap-2">
-                  <Input
-                    value={newBill.name || bill.name}
-                    onChange={(e) => setNewBill({ ...newBill, name: e.target.value })}
-                    className="flex-1 mr-2"
-                  />
-                  <Input
-                    type="number"
-                    value={newBill.amount || bill.amount}
-                    onChange={(e) => setNewBill({ ...newBill, amount: e.target.value })}
-                    className="w-24 mr-2"
-                    step="0.01"
-                  />
-                  <Input
-                    type="date"
-                    value={newBill.date || new Date(bill.date).toISOString().split('T')[0]}
-                    onChange={(e) => setNewBill({ ...newBill, date: e.target.value })}
-                    className="w-40 mr-2"
-                  />
-                  <Select
-                    value={newBill.category || bill.category}
-                    onValueChange={(value) => setNewBill({ ...newBill, category: value })}
+        {/* Lista de despesas */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Lista de Despesas</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2">
+              {filteredBills.map((bill) => (
+                <li
+                  key={bill._id}
+                  className="flex flex-col md:flex-row justify-between items-start md:items-center p-3 bg-white dark:bg-gray-800 rounded-md shadow-sm transition-all duration-300 hover:shadow-md gap-4"
                   >
-                    <SelectTrigger className="w-48 mr-2">
-                      <SelectValue placeholder="Category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((category) => (
-                        <SelectItem key={category} value={category}>
-                          {category}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button variant="ghost" size="icon" onClick={() => saveBill(bill._id)}>
-                    <Save className="h-4 w-4 text-[#009EE3]" />
+                    {editingId === bill._id ? (
+                      <div className="flex flex-col md:flex-row w-full gap-2">
+                        <Input
+                          value={newBill.name}
+                          onChange={(e) => setNewBill({ ...newBill, name: e.target.value })}
+                          className="flex-1 mr-2"
+                        />
+                        <Input
+                          type="number"
+                          value={newBill.amount}
+                          onChange={(e) => setNewBill({ ...newBill, amount: e.target.value })}
+                          className="w-24 mr-2"
+                          step="0.01"
+                        />
+                        <Input
+                          type="date"
+                          value={newBill.date}
+                          onChange={(e) => setNewBill({ ...newBill, date: e.target.value })}
+                          className="w-40 mr-2"
+                        />
+                        <Select
+                          value={newBill.category}
+                          onValueChange={(value) => setNewBill({ ...newBill, category: value })}
+                        >
+                          <SelectTrigger className="w-48 mr-2">
+                            <SelectValue placeholder="Categoria" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {categories.map((category) => (
+                              <SelectItem key={category} value={category}>
+                                {category}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button variant="ghost" size="icon" onClick={() => saveBill(bill._id)}>
+                          <Save className="h-4 w-4 text-blue-600" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={cancelEdit}>
+                          <X className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <>
+                        <span className="font-medium text-gray-800 dark:text-gray-200 break-all">
+                          {bill.name}
+                        </span>
+                        <div className="flex flex-wrap items-center gap-2 md:gap-4">
+                          <Badge variant="secondary" className="bg-[#eaf5fd] text-[#009EE3] dark:bg-blue-900 dark:text-blue-100">
+                            R$ {bill.amount.toFixed(2)}
+                          </Badge>
+                          <Badge variant="secondary" className="bg-[#eaf5fd] text-[#009EE3] dark:bg-blue-900 dark:text-blue-100">
+                            <Calendar className="h-3 w-3 mr-1" />
+                            {new Date(bill.date).toLocaleDateString()}
+                          </Badge>
+                          <Badge variant="secondary" className="bg-[#eaf5fd] text-[#009EE3] dark:bg-blue-900 dark:text-blue-100">
+                            <Tag className="h-3 w-3 mr-1" />
+                            {bill.category}
+                          </Badge>
+                          <Button variant="ghost" size="icon" onClick={() => editBill(bill._id)}>
+                            <Edit2 className="h-4 w-4 text-[#009EE3]" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(bill)}>
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
+                        </div>
+                      </>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+  
+          {/* Modal de confirmação de exclusão */}
+          <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Confirmar Exclusão</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <p>Para confirmar a exclusão, digite o nome da despesa: <strong>{itemToDelete?.name}</strong></p>
+                <Input
+                  value={deleteConfirmation}
+                  onChange={(e) => setDeleteConfirmation(e.target.value)}
+                  placeholder="Digite o nome da despesa"
+                />
+                <div className="flex justify-end gap-4">
+                  <Button variant="outline" onClick={() => setIsDeleteModalOpen(false)}>
+                    Cancelar
                   </Button>
-                  <Button variant="ghost" size="icon" onClick={cancelEdit}>
-                    <X className="h-4 w-4 text-red-500" />
+                  <Button
+                    variant="destructive"
+                    onClick={handleDeleteConfirm}
+                    disabled={deleteConfirmation !== itemToDelete?.name}
+                  >
+                    Excluir
                   </Button>
                 </div>
-              ) : (
-                <>
-                  <span className="font-medium text-gray-800 dark:text-gray-200 break-all">{bill.name}</span>
-                  <div className="flex flex-wrap items-center gap-2 md:gap-4">
-                    <Badge
-                      variant="secondary"
-                      className="bg-[#009EE3]/10 text-[#009EE3] dark:bg-[#009EE3]/20 dark:text-[#009EE3]"
-                    >
-                      <DollarSign className="h-3 w-3 mr-1" />
-                      {bill.amount.toFixed(2)}
-                    </Badge>
-                    <Badge
-                      variant="secondary"
-                      className="bg-[#009EE3]/10 text-[#009EE3] dark:bg-[#009EE3]/20 dark:text-[#009EE3]"
-                    >
-                      <Calendar className="h-3 w-3 mr-1" />
-                      {new Date(bill.date).toLocaleDateString()}
-                    </Badge>
-                    <Badge
-                      variant="secondary"
-                      className="bg-[#009EE3]/10 text-[#009EE3] dark:bg-[#009EE3]/20 dark:text-[#009EE3]"
-                    >
-                      <Tag className="h-3 w-3 mr-1" />
-                      {bill.category}
-                    </Badge>
-                    <Button variant="ghost" size="icon" onClick={() => editBill(bill._id)}>
-                      <Edit2 className="h-4 w-4 text-[#009EE3]" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => removeBill(bill._id)}>
-                      <Trash2 className="h-4 w-4 text-red-500" />
-                    </Button>
-                  </div>
-                </>
-              )}
-            </li>
-          ))}
-        </ul>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
-    </div>
-  )
-}
+    )
+  }

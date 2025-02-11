@@ -1,9 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Plus, Trash2, Edit2, Save, X, DollarSign, Calendar, Tag } from "lucide-react"
+import { Plus, Trash2, Edit2, Save, X, DollarSign, Calendar, Tag, AlertCircle, PiggyBank } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -28,8 +28,13 @@ export default function HospitalIncomeManager() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState("")
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [deleteConfirmation, setDeleteConfirmation] = useState("")
+  const [itemToDelete, setItemToDelete] = useState(null)
   const [yearFilter, setYearFilter] = useState("all")
   const [nameFilter, setNameFilter] = useState("")
+  const [startDate, setStartDate] = useState("")
+  const [endDate, setEndDate] = useState("")
 
   useEffect(() => {
     fetchIncomes()
@@ -80,6 +85,21 @@ export default function HospitalIncomeManager() {
         console.error('Error adding income:', error)
         setError("Failed to add income. Please try again.")
       }
+    }
+  }
+
+  const handleDeleteClick = (income) => {
+    setItemToDelete(income)
+    setIsDeleteModalOpen(true)
+    setDeleteConfirmation("")
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (deleteConfirmation === itemToDelete.name) {
+      await removeIncome(itemToDelete._id)
+      setIsDeleteModalOpen(false)
+      setItemToDelete(null)
+      setDeleteConfirmation("")
     }
   }
 
@@ -137,6 +157,19 @@ export default function HospitalIncomeManager() {
     setNewIncome({ name: "", amount: "", date: "", category: "" })
   }
 
+  const filterData = (data) => {
+    if (!startDate && !endDate) return data
+    
+    return data.filter(item => {
+      const itemDate = new Date(item.date)
+      const start = startDate ? new Date(startDate) : new Date(0)
+      const end = endDate ? new Date(endDate) : new Date()
+      end.setHours(23, 59, 59, 999)
+      
+      return itemDate >= start && itemDate <= end
+    })
+  }
+
   const categories = [
     "Consultas",
     "Cirurgias",
@@ -150,7 +183,7 @@ export default function HospitalIncomeManager() {
     "Outros Serviços",
   ]
 
-  const filteredIncomes = incomes.filter((income) => {
+  const filteredIncomes = filterData(incomes).filter((income) => {
     const monthMatch = monthFilter === "all" || 
       new Date(income.date).getMonth() === Number.parseInt(monthFilter) - 1
     const categoryMatch = categoryFilter === "all" || 
@@ -162,33 +195,34 @@ export default function HospitalIncomeManager() {
     return monthMatch && categoryMatch && yearMatch && nameMatch
   })
 
-  // Get unique years from incomes
   const years = [...new Set(incomes.map(income => 
     new Date(income.date).getFullYear()
-  ))].sort((a, b) => b - a) // Sort descending
+  ))].sort((a, b) => b - a)
 
   const totalSum = filteredIncomes.reduce((sum, income) => sum + income.amount, 0)
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center h-screen bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-gray-800 dark:to-gray-900">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-gray-800 dark:to-gray-900 p-4">
+    <div className="space-y-6 p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-start mb-8">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
           <div className="flex flex-col">
-            <h1 className="text-4xl font-bold text-[#009EE3]">
-              Receitas
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <PiggyBank size={20} />
+            Gestão de Receitas
             </h1>
-            <span className="text-2xl font-semibold text-[#009EE3] mt-2">
-              R${totalSum.toFixed(2)}
+            <span className="text-2xl font-semibold text-gray-700 dark:text-gray-300 mt-2">
+              Total: R$ {totalSum.toFixed(2)}
             </span>
           </div>
+
           <div className="flex items-center gap-4">
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
               <DialogTrigger asChild>
@@ -203,21 +237,16 @@ export default function HospitalIncomeManager() {
                 <form onSubmit={addIncome} className="space-y-4">
                   <div className="space-y-4">
                     <div>
-                      <Label htmlFor="incomeName" className="text-[#009EE3] dark:text-[#009EE3]">
-                        Nome da Receita
-                      </Label>
+                      <Label htmlFor="incomeName">Nome da Receita</Label>
                       <Input
                         id="incomeName"
                         value={newIncome.name}
                         onChange={(e) => setNewIncome({ ...newIncome, name: e.target.value })}
                         placeholder="Digite o nome da receita"
-                        className="border-[#009EE3] dark:border-[#009EE3]"
                       />
                     </div>
                     <div>
-                      <Label htmlFor="incomeAmount" className="text-[#009EE3] dark:text-[#009EE3]">
-                        Valor
-                      </Label>
+                      <Label htmlFor="incomeAmount">Valor</Label>
                       <Input
                         id="incomeAmount"
                         type="number"
@@ -225,27 +254,21 @@ export default function HospitalIncomeManager() {
                         onChange={(e) => setNewIncome({ ...newIncome, amount: e.target.value })}
                         placeholder="Digite o valor"
                         step="0.01"
-                        className="border-[#009EE3] dark:border-[#009EE3]"
                       />
                     </div>
                     <div>
-                      <Label htmlFor="incomeDate" className="text-[#009EE3] dark:text-[#009EE3]">
-                        Data
-                      </Label>
+                      <Label htmlFor="incomeDate">Data</Label>
                       <Input
                         id="incomeDate"
                         type="date"
                         value={newIncome.date}
                         onChange={(e) => setNewIncome({ ...newIncome, date: e.target.value })}
-                        className="border-[#009EE3] dark:border-[#009EE3]"
                       />
                     </div>
                     <div>
-                      <Label htmlFor="incomeCategory" className="text-[#009EE3] dark:text-[#009EE3]">
-                        Categoria
-                      </Label>
+                      <Label htmlFor="incomeCategory">Categoria</Label>
                       <Select value={newIncome.category} onValueChange={(value) => setNewIncome({ ...newIncome, category: value })}>
-                        <SelectTrigger className="border-[#009EE3] dark:border-[#009EE3]">
+                        <SelectTrigger>
                           <SelectValue placeholder="Selecione a categoria" />
                         </SelectTrigger>
                         <SelectContent>
@@ -258,10 +281,7 @@ export default function HospitalIncomeManager() {
                       </Select>
                     </div>
                   </div>
-                  <Button
-                    type="submit"
-                    className="w-full bg-[#009EE3] hover:bg-[#0080B7] text-white"
-                  >
+                  <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white">
                     Adicionar Receita
                   </Button>
                 </form>
@@ -273,54 +293,48 @@ export default function HospitalIncomeManager() {
 
         {error && (
           <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
 
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
-          <h3 className="text-lg font-semibold text-[#009EE3] dark:text-[#009EE3]">Receitas Hospitalares</h3>
-          <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
-            {/* Name Filter */}
+        <div className="flex flex-col md:flex-row justify-end items-start md:items-center gap-4 mb-6">
+          <div className="flex flex-col md:flex-row gap-4 items-end">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="start-date" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Data Inicial
+              </Label>
+              <Input
+                id="start-date"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full md:w-40"
+              />
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="end-date" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Data Final
+              </Label>
+              <Input
+                id="end-date"
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full md:w-40"
+              />
+            </div>
+
             <Input
               placeholder="Filtrar por nome"
               value={nameFilter}
               onChange={(e) => setNameFilter(e.target.value)}
-              className="w-full md:w-[200px] border-[#009EE3] dark:border-[#009EE3]"
+              className="w-full md:w-[200px]"
             />
 
-            {/* Month Filter */}
-            <Select value={monthFilter} onValueChange={setMonthFilter}>
-              <SelectTrigger className="w-full md:w-[180px] border-[#009EE3] dark:border-[#009EE3]">
-                <SelectValue placeholder="Filtrar por mês" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os Meses</SelectItem>
-                {Array.from({ length: 12 }, (_, i) => (
-                  <SelectItem key={i + 1} value={(i + 1).toString()}>
-                    {new Date(0, i).toLocaleString("default", { month: "long" })}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {/* Year Filter */}
-            <Select value={yearFilter} onValueChange={setYearFilter}>
-              <SelectTrigger className="w-full md:w-[180px] border-[#009EE3] dark:border-[#009EE3]">
-                <SelectValue placeholder="Filtrar por ano" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os Anos</SelectItem>
-                {years.map((year) => (
-                  <SelectItem key={year} value={year.toString()}>
-                    {year}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {/* Category Filter */}
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-full md:w-[180px] border-[#009EE3] dark:border-[#009EE3]">
+              <SelectTrigger className="w-full md:w-[180px]">
                 <SelectValue placeholder="Filtrar por categoria" />
               </SelectTrigger>
               <SelectContent>
@@ -335,91 +349,134 @@ export default function HospitalIncomeManager() {
           </div>
         </div>
 
-        <ul className="space-y-2">
-          {filteredIncomes.map((income) => (
-            <li
-              key={income._id}
-              className="flex flex-col md:flex-row justify-between items-start md:items-center p-3 bg-white dark:bg-gray-800 rounded-md shadow-md transition-all duration-300 hover:shadow-lg gap-4"
-            >
-              {editingId === income._id ? (
-                <>
-                  <Input
-                    value={newIncome.name || income.name}
-                    onChange={(e) => setNewIncome({ ...newIncome, name: e.target.value })}
-                    className="flex-1 mr-2"
-                  />
-                  <Input
-                    type="number"
-                    value={newIncome.amount || income.amount}
-                    onChange={(e) => setNewIncome({ ...newIncome, amount: e.target.value })}
-                    className="w-24 mr-2"
-                    step="0.01"
-                  />
-                  <Input
-                    type="date"
-                    value={newIncome.date || new Date(income.date).toISOString().split('T')[0]}
-                    onChange={(e) => setNewIncome({ ...newIncome, date: e.target.value })}
-                    className="w-40 mr-2"
-                  />
-                  <Select
-                    value={newIncome.category || income.category}
-                    onValueChange={(value) => setNewIncome({ ...newIncome, category: value })}
-                  >
-                    <SelectTrigger className="w-48 mr-2">
-                      <SelectValue placeholder="Categoria" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((category) => (
-                        <SelectItem key={category} value={category}>
-                          {category}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button variant="ghost" size="icon" onClick={() => saveIncome(income._id)}>
-                    <Save className="h-4 w-4 text-[#009EE3]" />
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={cancelEdit}>
-                    <X className="h-4 w-4 text-[#009EE3]" />
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <span className="font-medium text-gray-800 dark:text-gray-200 break-all">{income.name}</span>
-                  <div className="flex flex-wrap items-center gap-2 md:gap-4">
-                    <Badge
-                      variant="secondary"
-                      className="bg-[#009EE3]/10 text-[#009EE3] dark:bg-[#009EE3]/20 dark:text-[#009EE3]"
-                    >
-                      <DollarSign className="h-3 w-3 mr-1" />
-                      {income.amount.toFixed(2)}
-                    </Badge>
-                    <Badge
-                      variant="secondary"
-                      className="bg-[#009EE3]/10 text-[#009EE3] dark:bg-[#009EE3]/20 dark:text-[#009EE3]"
-                    >
-                      <Calendar className="h-3 w-3 mr-1" />
-                      {new Date(income.date).toLocaleDateString()}
-                    </Badge>
-                    <Badge
-                      variant="secondary"
-                      className="bg-[#009EE3]/10 text-[#009EE3] dark:bg-[#009EE3]/20 dark:text-[#009EE3]"
-                    >
-                      <Tag className="h-3 w-3 mr-1" />
-                      {income.category}
-                    </Badge>
-                    <Button variant="ghost" size="icon" onClick={() => editIncome(income._id)}>
-                      <Edit2 className="h-4 w-4 text-[#009EE3]" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => removeIncome(income._id)}>
-                      <Trash2 className="h-4 w-4 text-red-500" />
-                    </Button>
-                  </div>
-                </>
-              )}
-            </li>
-          ))}
-        </ul>
+        <Card>
+          <CardHeader>
+            <CardTitle>Lista de Receitas</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2">
+              {filteredIncomes.map((income) => (
+                <li
+                  key={income._id}
+                  className="flex flex-col md:flex-row justify-between items-start md:items-center p-3 bg-white dark:bg-gray-800 rounded-md shadow-sm transition-all duration-300 hover:shadow-md gap-4"
+                >
+                  {editingId === income._id ? (
+                    <div className="flex flex-col md:flex-row w-full gap-2">
+                      <Input
+                        value={newIncome.name || income.name}
+                        onChange={(e) => setNewIncome({ ...newIncome, name: e.target.value })}
+                        className="flex-1 mr-2"
+                      />
+                      <Input
+                        type="number"
+                        value={newIncome.amount || income.amount}
+                        onChange={(e) => setNewIncome({ ...newIncome, amount: e.target.value })}
+                        className="w-24 mr-2"
+                        step="0.01"
+                      />
+                      <Input
+                        type="date"
+                        value={newIncome.date || new Date(income.date).toISOString().split('T')[0]}
+                        onChange={(e) => setNewIncome({ ...newIncome, date: e.target.value })}
+                        className="w-40 mr-2"
+                      />
+                      <Select
+                        value={newIncome.category || income.category}
+                        onValueChange={(value) => setNewIncome({ ...newIncome, category: value })}
+                      >
+                        <SelectTrigger className="w-48 mr-2">
+                          <SelectValue placeholder="Categoria" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {categories.map((category) => (
+                            <SelectItem key={category} value={category}>
+                              {category}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button variant="ghost" size="icon" onClick={() => saveIncome(income._id)}>
+                        <Save className="h-4 w-4 text-blue-600" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={cancelEdit}>
+                        <X className="h-4 w-4 text-red-500" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      <span className="font-medium text-gray-800 dark:text-gray-200 break-all">
+                        {income.name}
+                      </span>
+                      <div className="flex flex-wrap items-center gap-2 md:gap-4">
+                        <Badge variant="secondary" className="bg-[#eaf5fd] text-[#009EE3] dark:bg-blue-900 dark:text-blue-100">
+                          R$ {income.amount.toFixed(2)}
+                        </Badge>
+                        <Badge variant="secondary" className="bg-[#eaf5fd] text-[#009EE3] dark:bg-blue-900 dark:text-blue-1000">
+                          <Calendar className="h-3 w-3 mr-1" />
+                          {new Date(income.date).toLocaleDateString()}
+                        </Badge>
+                        <Badge variant="secondary" className="bg-[#eaf5fd] text-[#009EE3] dark:bg-blue-900 dark:text-blue-100">
+                          <Tag className="h-3 w-3 mr-1" />
+                          {income.category}
+                        </Badge>
+                        <Button variant="ghost" size="icon" onClick={() => editIncome(income._id)}>
+                          <Edit2 className="h-4 w-4 text-[#009EE3]" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(income)}>
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+
+        {/* Modal de Confirmação de Exclusão */}
+        <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle className="text-lg font-semibold text-gray-900">
+                Confirmar Exclusão
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="text-sm text-gray-600">
+                Para confirmar a exclusão, digite o nome da receita:
+                <span className="font-semibold text-gray-900 ml-1">
+                  {itemToDelete?.name}
+                </span>
+              </div>
+              <Input
+                value={deleteConfirmation}
+                onChange={(e) => setDeleteConfirmation(e.target.value)}
+                placeholder="Digite o nome da receita"
+                className="w-full"
+              />
+            </div>
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsDeleteModalOpen(false)
+                  setItemToDelete(null)
+                  setDeleteConfirmation("")
+                }}
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleDeleteConfirm}
+                disabled={deleteConfirmation !== itemToDelete?.name}
+              >
+                Excluir
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   )
