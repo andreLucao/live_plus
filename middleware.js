@@ -15,18 +15,20 @@ export async function middleware(request) {
     return NextResponse.next();
   }
 
-  // First verify if tenant exists
-  if (tenant) {
-    try {
-      const verifyResponse = await fetch(`${request.nextUrl.origin}/api/tenants/verify/${tenant}`);
-      
-      if (!verifyResponse.ok) {
-        // Tenant doesn't exist, redirect to main site or error page
+  // Verify tenant only for login path
+  if (pathname.includes('/login')) {
+    if (tenant) {
+      try {
+        const verifyResponse = await fetch(`${request.nextUrl.origin}/api/tenants/verify/${tenant}`);
+        
+        if (!verifyResponse.ok) {
+          // Tenant doesn't exist, redirect to main site or error page
+          return NextResponse.redirect('https://liveplus.pro');
+        }
+      } catch (error) {
+        console.error('Tenant verification error:', error);
         return NextResponse.redirect(new URL('/', request.url));
       }
-    } catch (error) {
-      console.error('Tenant verification error:', error);
-      return NextResponse.redirect(new URL('/', request.url));
     }
   }
 
