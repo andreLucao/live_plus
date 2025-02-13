@@ -8,7 +8,7 @@ export async function middleware(request) {
   const pathname = request.nextUrl.pathname;
   const pathParts = pathname.split('/').filter(Boolean);
   const tenant = pathParts[0];
-  console.log('Tenant:', tenant);
+  //console.log('Tenant:', tenant);
 
   // Skip tenant verification for root path
   if (pathname === '/') {
