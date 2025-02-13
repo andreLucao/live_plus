@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
+import { verifyDatabase } from '@/lib/verifyDatabase';
 
 export async function GET(request, { params }) {
   try {
-    // Get the tenant path from the route parameter
-    const { tenantPath } = params; // This will get 'prismma' from /api/tenant/verify/prismma
+    // Await params to ensure it's resolved before accessing its properties
+    const { tenantPath } = await params; // This will get 'prismma' from /api/tenant/verify/prismma
     
     if (!tenantPath) {
       return NextResponse.json(

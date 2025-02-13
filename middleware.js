@@ -4,10 +4,16 @@ import { jwtVerify } from 'jose';
 const JWT_SECRET = process.env.JWT_SECRET || 'your-jwt-secret';
 
 export async function middleware(request) {
-  // Extract tenant from hostname (e.g., tenant.domain.com)
-  const hostname = request.headers.get('host');
-  const tenant = hostname.split('.')[0];
-  console.log(tenant);
+  // Extract tenant from URL path (e.g., myApp.pro/tenant)
+  const pathname = request.nextUrl.pathname;
+  const pathParts = pathname.split('/').filter(Boolean);
+  const tenant = pathParts[0];
+  console.log('Tenant:', tenant);
+
+  // Skip tenant verification for root path
+  if (pathname === '/') {
+    return NextResponse.next();
+  }
 
   // First verify if tenant exists
   if (tenant) {
@@ -25,7 +31,7 @@ export async function middleware(request) {
   }
 
   // Check if the route should be protected
-  if (request.nextUrl.pathname.startsWith('/dashboard') || request.nextUrl.pathname.startsWith('/financeiro')) {
+  if (pathname.includes('/dashboard') || pathname.includes('/financeiro')) {
     const token = request.cookies.get('auth_token')?.value;
 
     if (!token) {
@@ -38,11 +44,11 @@ export async function middleware(request) {
       const { payload } = await jwtVerify(token, secret);
       
       // Check role restrictions for /financeiro
-      if (request.nextUrl.pathname.startsWith('/financeiro')) {
+      if (pathname.includes('/financeiro')) {
         const userRole = payload.role;
         if (userRole !== 'owner' && userRole !== 'admin') {
           // Redirect unauthorized users to dashboard
-          return NextResponse.redirect(new URL('/dashboard', request.url));
+          return NextResponse.redirect(new URL(`/${tenant}/dashboard`, request.url));
         }
       }
 
@@ -60,5 +66,8 @@ export async function middleware(request) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/financeiro/:path*']
-}; 
+  matcher: [
+    // Match all paths except api routes
+    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+  ]
+};
