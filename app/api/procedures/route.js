@@ -3,10 +3,19 @@ import { NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import { Procedure } from '@/lib/models/Procedures';
 
-export async function GET() {
+export async function GET(request) {
   try {
     await connectDB();
-    const procedures = await Procedure.find().sort({ date: -1 });
+    const tenantPath = request.headers.get('x-tenant-path');
+    
+    if (!tenantPath) {
+      return NextResponse.json(
+        { error: 'Tenant path is required' },
+        { status: 400 }
+      );
+    }
+
+    const procedures = await Procedure.find({ tenantPath }).sort({ date: -1 });
     return NextResponse.json(procedures);
   } catch (error) {
     return NextResponse.json(
@@ -19,17 +28,28 @@ export async function GET() {
 export async function POST(request) {
   try {
     await connectDB();
+    const tenantPath = request.headers.get('x-tenant-path');
     const data = await request.json();
     
-    // Validação dos dados
-    if (!data.name || !data.category || !data.date || !data.doctor || !data.patient) {
+    if (!tenantPath) {
       return NextResponse.json(
-        { error: 'Missing required fields' }, 
+        { error: 'Tenant path is required' },
         { status: 400 }
       );
     }
 
-    const procedure = await Procedure.create(data);
+    // Add tenantPath to the data
+    const procedureData = { ...data, tenantPath };
+    
+    if (!procedureData.name || !procedureData.category || !procedureData.date || 
+        !procedureData.doctor || !procedureData.patient) {
+      return NextResponse.json(
+        { error: 'Missing required fields' },
+        { status: 400 }
+      );
+    }
+
+    const procedure = await Procedure.create(procedureData);
     return NextResponse.json(procedure, { status: 201 });
   } catch (error) {
     return NextResponse.json(
@@ -42,19 +62,22 @@ export async function POST(request) {
 export async function PUT(request) {
   try {
     await connectDB();
+    const tenantPath = request.headers.get('x-tenant-path');
     const data = await request.json();
     const { id, ...updateData } = data;
     
-    // Validação dos dados
-    if (!id || !updateData.name || !updateData.category || 
-        !updateData.date || !updateData.doctor || !updateData.patient) {
+    if (!tenantPath) {
       return NextResponse.json(
-        { error: 'Missing required fields' }, 
+        { error: 'Tenant path is required' },
         { status: 400 }
       );
     }
 
-    const procedure = await Procedure.findByIdAndUpdate(id, updateData, { new: true });
+    const procedure = await Procedure.findOneAndUpdate(
+      { _id: id, tenantPath },
+      updateData,
+      { new: true }
+    );
     
     if (!procedure) {
       return NextResponse.json(

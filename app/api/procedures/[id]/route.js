@@ -6,9 +6,17 @@ import { Procedure } from '@/lib/models/Procedures';
 export async function DELETE(request, { params }) {
   try {
     const { id } = params;
+    const tenantPath = request.headers.get('x-tenant-path');
     await connectDB();
     
-    const procedure = await Procedure.findByIdAndDelete(id);
+    if (!tenantPath) {
+      return NextResponse.json(
+        { error: 'Tenant path is required' },
+        { status: 400 }
+      );
+    }
+
+    const procedure = await Procedure.findOneAndDelete({ _id: id, tenantPath });
     
     if (!procedure) {
       return NextResponse.json(

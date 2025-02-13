@@ -5,10 +5,18 @@ import { Appointment } from '@/lib/models/Appointment';
 
 export async function DELETE(request, { params }) {
   try {
-    await connectDB();
     const { id } = params;
+    const tenantPath = request.headers.get('x-tenant-path');
+    await connectDB();
     
-    const appointment = await Appointment.findByIdAndDelete(id);
+    if (!tenantPath) {
+      return NextResponse.json(
+        { error: 'Tenant path is required' },
+        { status: 400 }
+      );
+    }
+
+    const appointment = await Appointment.findOneAndDelete({ _id: id, tenantPath });
     
     if (!appointment) {
       return NextResponse.json(
