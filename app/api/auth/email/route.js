@@ -1,3 +1,4 @@
+// File: app/api/auth/email/route.js
 import { NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
 import jwt from 'jsonwebtoken';
@@ -15,18 +16,26 @@ export async function POST(request) {
   });
 
   try {
-    const { email } = await request.json();
+    const { email, tenant } = await request.json();
     
-    // Create a JWT token
-    const token = jwt.sign({ email }, EMAIL_SECRET, { expiresIn: '1h' });
+    // Validate required fields
+    if (!email || !tenant) {
+      return NextResponse.json(
+        { error: 'Email and tenant are required' },
+        { status: 400 }
+      );
+    }
+
+    // Create a JWT token with both email and tenant
+    const token = jwt.sign({ email, tenant }, EMAIL_SECRET, { expiresIn: '1h' });
     
     // Add debug logging
-    console.log('Login attempt:', { email, token });
+    console.log('Login attempt:', { email, token: token.substring(0, 10) + '...', tenant });
     
-    // Create login link
-    const loginLink = `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/verify?token=${token}`;
+    // Create login link with encoded tenant parameter
+    const loginLink = `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/verify?token=${token}&tenant=${encodeURIComponent(tenant)}`;
 
-    // Configure nodemailer with updated settings
+    // Configure nodemailer
     const transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
       port: process.env.SMTP_PORT,
@@ -60,10 +69,14 @@ export async function POST(request) {
         <p>Click the link below to login:</p>
         <a href="${loginLink}">Login Now</a>
         <p>This link will expire in 1 hour.</p>
+        <p>If you didn't request this login link, please ignore this email.</p>
       `,
     });
 
-    return NextResponse.json({ message: 'Email sent successfully' });
+    return NextResponse.json({ 
+      message: 'Email sent successfully',
+      debug: { email, tenant } // Include debug info in development
+    });
   } catch (error) {
     console.error('Login error:', error);
     return NextResponse.json(

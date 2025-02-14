@@ -2,8 +2,7 @@ import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 import { SignJWT } from 'jose';
-import { connectDB, getTenantDatabases, getTenantModel } from '@/lib/mongodb';
-import User from '@/lib/models/User';
+import { connectDB, getTenantModel } from '@/lib/mongodb';
 
 const EMAIL_SECRET = process.env.EMAIL_SECRET || 'your-secret-key';
 const JWT_SECRET = process.env.JWT_SECRET || 'your-jwt-secret';
@@ -11,56 +10,86 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-jwt-secret';
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
-    const token = searchParams.get('token');
-
+    let token = searchParams.get('token');
+    let tenant = searchParams.get('tenant');
+    
+    // Get base URL for redirects
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL;
+    
+    // Basic validation
     if (!token) {
-      return NextResponse.redirect(new URL('/?error=invalid-token', request.url));
+      console.error('No token provided');
+      return NextResponse.redirect(new URL(`${baseUrl}/?error=invalid-token`));
     }
 
-    // Verify the email token
-    const decoded = jwt.verify(token, EMAIL_SECRET);
-    
-    // Connect to MongoDB main database
-    await connectDB();
-    
-    const emailDomain = decoded.email.split('@')[1].split('.')[0];
-    
-    // Get list of existing tenant databases
-    const existingDatabases = await getTenantDatabases();
-    const isTenantNew = !existingDatabases.includes(emailDomain);
-    
+    // Verify the email token first
+    let decoded;
+    try {
+      decoded = jwt.verify(token, EMAIL_SECRET);
+    } catch (error) {
+      console.error('Token verification failed:', error);
+      return NextResponse.redirect(new URL(`${baseUrl}/?error=invalid-token`));
+    }
+
+    // If tenant is missing from URL, try to get it from token
+    if (!tenant && decoded.tenant) {
+      tenant = decoded.tenant;
+      console.log('Retrieved tenant from token:', tenant);
+    }
+
+    // Validate tenant
+    if (!tenant) {
+      console.error('No tenant provided');
+      return NextResponse.redirect(new URL(`${baseUrl}/?error=invalid-tenant`));
+    }
+
+    // Verify tenant matches token
+    if (tenant !== decoded.tenant) {
+      console.error('Tenant mismatch:', { urlTenant: tenant, tokenTenant: decoded.tenant });
+      return NextResponse.redirect(new URL(`${baseUrl}/?error=invalid-tenant`));
+    }
+
+    // Create tenant URL for redirects
+    const tenantUrl = `${baseUrl}/${encodeURIComponent(tenant)}`;
+
     // Connect to tenant's database
-    const tenantConnection = await connectDB(emailDomain);
+    let tenantConnection;
+    try {
+      tenantConnection = await connectDB(tenant);
+    } catch (error) {
+      console.error('Database connection failed:', error);
+      return NextResponse.redirect(new URL(`${tenantUrl}/?error=database-error`));
+    }
+
     const User = getTenantModel(tenantConnection, 'User');
     
     // Find or create user
-    let user = await User.findOne({ email: decoded.email });
-    
-    if (user && !user.tenantPath) {
-      user.tenantPath = emailDomain;
+    let user;
+    try {
+      user = await User.findOne({ email: decoded.email });
+      
+      if (user && !user.tenantPath) {
+        user.tenantPath = tenant;
+        await user.save();
+      } else if (!user) {
+        // Create new user
+        user = new User({
+          email: decoded.email,
+          tenantPath: tenant,
+          role: 'user',
+          createdAt: new Date(),
+          lastLoginAt: new Date()
+        });
+        await user.save();
+      }
+
+      // Update last login
+      user.lastLoginAt = new Date();
       await user.save();
-    } else if (!user) {
-      // Create new user
-      const newUser = new User({
-        email: decoded.email,
-        tenantPath: emailDomain,
-        role: isTenantNew ? 'owner' : 'user',
-        createdAt: new Date(),
-        lastLoginAt: new Date()
-      });
-      await newUser.save();
-      user = newUser;
+    } catch (error) {
+      console.error('User operations failed:', error);
+      return NextResponse.redirect(new URL(`${tenantUrl}/?error=user-error`));
     }
-
-    // If this is a new tenant, initialize their database
-    if (isTenantNew) {
-      await connectDB(emailDomain);
-      console.log(`Initialized new tenant database: ${emailDomain}`);
-    }
-
-    // Update last login
-    user.lastLoginAt = new Date();
-    await user.save();
 
     // Add debug logging
     console.log('User login:', { 
@@ -68,35 +97,41 @@ export async function GET(request) {
       email: user.email,
       tenantPath: user.tenantPath,
       role: user.role,
-      token: token.substring(0, 10) + '...' // Only log part of the token for security
+      token: token.substring(0, 10) + '...'
     });
     
-    // Create a session token using jose
-    const secret = new TextEncoder().encode(JWT_SECRET);
-    const sessionToken = await new SignJWT({ 
-      email: decoded.email,
-      userId: user._id.toString(),
-      tenantPath: user.tenantPath,
-      role: user.role,
-      authenticated: true 
-    })
-      .setProtectedHeader({ alg: 'HS256' })
-      .setExpirationTime('7d')
-      .sign(secret);
+    // Create a session token
+    try {
+      const secret = new TextEncoder().encode(JWT_SECRET);
+      const sessionToken = await new SignJWT({ 
+        email: decoded.email,
+        userId: user._id.toString(),
+        tenantPath: user.tenantPath,
+        role: user.role,
+        authenticated: true 
+      })
+        .setProtectedHeader({ alg: 'HS256' })
+        .setExpirationTime('7d')
+        .sign(secret);
 
-    // Set the session cookie
-    const cookieStore = await cookies();
-    cookieStore.set('auth_token', sessionToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60, // 7 days
-      path: '/',
-    });
+      // Set the session cookie
+      const cookieStore = await cookies();
+      await cookieStore.set('auth_token', sessionToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 7 * 24 * 60 * 60, // 7 days
+        path: '/',
+      });
 
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+      return NextResponse.redirect(new URL(`${tenantUrl}/dashboard`));
+    } catch (error) {
+      console.error('Session creation failed:', error);
+      return NextResponse.redirect(new URL(`${tenantUrl}/?error=session-error`));
+    }
   } catch (error) {
     console.error('Verification error:', error);
-    return NextResponse.redirect(new URL('/?error=invalid-token', request.url));
+    const errorUrl = `${process.env.NEXT_PUBLIC_APP_URL}/?error=server-error`;
+    return NextResponse.redirect(new URL(errorUrl));
   }
-} 
+}

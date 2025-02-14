@@ -1,14 +1,31 @@
 'use client'
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Mail } from "lucide-react";
+import { usePathname } from 'next/navigation';
 
 export default function Home() {
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [tenant, setTenant] = useState('');
+  
+  const pathname = usePathname();
+
+  useEffect(() => {
+    // Extract tenant from URL path (myapp/tenant/...)
+    const pathParts = pathname.split('/');
+    if (pathParts.length >= 2) {
+      setTenant(pathParts[1]); // Gets the 'tenant' part from the URL
+    }
+  }, [pathname]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!tenant) {
+      setMessage('Error: Tenant information not found');
+      return;
+    }
+    
     setIsLoading(true);
     try {
       const response = await fetch('/api/auth/email', {
@@ -16,7 +33,7 @@ export default function Home() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, tenant }),
       });
       
       const data = await response.json();
