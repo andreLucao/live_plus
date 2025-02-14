@@ -33,7 +33,7 @@ export async function middleware(request) {
   }
 
   // Check if the route should be protected
-  if (pathname.includes('/dashboard') || pathname.includes('/financeiro')) {
+  if (pathname.includes('/dashboard') ) {
     const token = request.cookies.get('auth_token')?.value;
 
     if (!token) {

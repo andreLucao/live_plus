@@ -235,7 +235,7 @@ export default function HospitalBillManager() {
             Gestão de Despesas
             </h1>
             <span className="text-2xl font-semibold text-gray-700 dark:text-gray-300 mt-2">
-              Total: R$ {totalSum.toFixed(2)}
+              Total: R$ {totalSum.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>
 

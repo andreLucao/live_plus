@@ -2,7 +2,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Plus, Trash2, Edit2, Save, X, User, Calendar, Tag, AlertCircle, Stethoscope, UserMinus } from "lucide-react"
+import { Plus, Trash2, Edit2, Save, X, User, Calendar, Tag, AlertCircle, Stethoscope, UserMinus, Clock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -41,6 +41,60 @@ export default function ProcedureManager() {
   const [deleteConfirmation, setDeleteConfirmation] = useState("")
   const [itemToDelete, setItemToDelete] = useState(null)
   const [nameFilter, setNameFilter] = useState("")
+
+  // Add this color mapping object after the categories array
+  const categoryColors = {
+    "Cirurgia": {
+      bg: "bg-[#fde7e7]",
+      text: "text-[#e32400]",
+      dark: "dark:bg-red-900 dark:text-red-100"
+    },
+    "Consulta": {
+      bg: "bg-[#e7f5e7]",
+      text: "text-[#00b341]",
+      dark: "dark:bg-green-900 dark:text-green-100"
+    },
+    "Exame": {
+      bg: "bg-[#eaf5fd]",
+      text: "text-[#009EE3]",
+      dark: "dark:bg-blue-900 dark:text-blue-100"
+    },
+    "Procedimento Ambulatorial": {
+      bg: "bg-[#fff4e5]",
+      text: "text-[#ff9500]",
+      dark: "dark:bg-orange-900 dark:text-orange-100"
+    },
+    "Tratamento": {
+      bg: "bg-[#f5eafd]",
+      text: "text-[#9E00E3]",
+      dark: "dark:bg-purple-900 dark:text-purple-100"
+    },
+    "Emergência": {
+      bg: "bg-[#fee2e2]",
+      text: "text-[#dc2626]",
+      dark: "dark:bg-red-900 dark:text-red-100"
+    },
+    "Internação": {
+      bg: "bg-[#e0f2fe]",
+      text: "text-[#0284c7]",
+      dark: "dark:bg-sky-900 dark:text-sky-100"
+    },
+    "Reabilitação": {
+      bg: "bg-[#f0fdf4]",
+      text: "text-[#16a34a]",
+      dark: "dark:bg-green-900 dark:text-green-100"
+    },
+    "Diagnóstico por Imagem": {
+      bg: "bg-[#faf5ff]",
+      text: "text-[#7e22ce]",
+      dark: "dark:bg-purple-900 dark:text-purple-100"
+    },
+    "Outro": {
+      bg: "bg-[#f3f4f6]",
+      text: "text-[#4b5563]",
+      dark: "dark:bg-gray-900 dark:text-gray-100"
+    }
+  }
 
   // Efeito para carregar os procedimentos ao montar o componente
   useEffect(() => {
@@ -194,6 +248,21 @@ export default function ProcedureManager() {
     "Diagnóstico por Imagem",
     "Outro"
   ]
+
+  // Add this utility function inside the component
+  const getTimeAgo = (date) => {
+    const now = new Date()
+    const procedureDate = new Date(date)
+    const diffTime = Math.abs(now - procedureDate)
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
+    
+    if (diffDays === 0) return "Hoje"
+    if (diffDays === 1) return "Ontem"
+    if (diffDays < 7) return `${diffDays} dias atrás`
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} semanas atrás`
+    if (diffDays < 365) return `${Math.floor(diffDays / 30)} meses atrás`
+    return `${Math.floor(diffDays / 365)} anos atrás`
+  }
 
   // Filtragem dos procedimentos
   const filteredProcedures = filterData(procedures).filter((procedure) => {
@@ -443,13 +512,20 @@ export default function ProcedureManager() {
                           {procedure.name}
                         </span>
                         <div className="flex flex-wrap gap-2">
-                          <Badge variant="secondary" className="bg-[#eaf5fd] text-[#009EE3] dark:bg-blue-900 dark:text-blue-100">
+                          <Badge 
+                            variant="secondary" 
+                            className={`${categoryColors[procedure.category].bg} ${categoryColors[procedure.category].text} ${categoryColors[procedure.category].dark}`}
+                          >
                             <Tag className="h-3 w-3 mr-1" />
                             {procedure.category}
                           </Badge>
                           <Badge variant="secondary" className="bg-[#eaf5fd] text-[#009EE3] dark:bg-blue-900 dark:text-blue-100">
                             <Calendar className="h-3 w-3 mr-1" />
                             {new Date(procedure.date).toLocaleDateString()}
+                          </Badge>
+                          <Badge variant="secondary" className="bg-[#f5eafd] text-[#9E00E3] dark:bg-purple-900 dark:text-purple-100">
+                            <Clock className="h-3 w-3 mr-1" />
+                            {getTimeAgo(procedure.date)}
                           </Badge>
                           <Badge variant="secondary" className="bg-[#eaf5fd] text-[#009EE3] dark:bg-blue-900 dark:text-blue-100">
                             <User className="h-3 w-3 mr-1" />
