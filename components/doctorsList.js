@@ -4,12 +4,14 @@ import AppointmentForm from "./appointment-form";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useParams } from "next/navigation";
 
-export default function DoctorList({ tenant }) {
+export default function DoctorList() {
   const [doctors, setDoctors] = useState([]);
   const [selectedDoctor, setSelectedDoctor] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const {tenant}= useParams()
 
   useEffect(() => {
     const fetchDoctors = async () => {
