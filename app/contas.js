@@ -2,6 +2,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useParams } from "next/navigation"
 import { Plus, Trash2, Edit2, Save, X, DollarSign, Calendar, Tag, AlertCircle, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -37,6 +38,7 @@ export default function HospitalBillManager() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [deleteConfirmation, setDeleteConfirmation] = useState("")
   const [itemToDelete, setItemToDelete] = useState(null)
+  const { tenant } = useParams()
 
   // Efeito para carregar as despesas ao montar o componente
   useEffect(() => {
@@ -55,7 +57,7 @@ export default function HospitalBillManager() {
   // Função para buscar as despesas da API
   const fetchBills = async () => {
     try {
-      const response = await fetch('/api/bills')
+      const response = await fetch(`/api/${tenant}/bills`)
       if (!response.ok) throw new Error('Failed to fetch bills')
       const data = await response.json()
       setBills(data)
