@@ -69,7 +69,7 @@ export default function HospitalIncomeManager() {
     e.preventDefault()
     if (newIncome.name && newIncome.amount && newIncome.date && newIncome.category) {
       try {
-        const response = await fetch('/api/income', {
+        const response = await fetch(`/api/${tenant}/income`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -107,7 +107,7 @@ export default function HospitalIncomeManager() {
 
   const removeIncome = async (id) => {
     try {
-      const response = await fetch(`/api/income/${id}`, {
+      const response = await fetch(`/api/${tenant}/income/${id}`, {
         method: 'DELETE',
       })
 
@@ -133,7 +133,7 @@ export default function HospitalIncomeManager() {
 
   const saveIncome = async (id) => {
     try {
-      const response = await fetch('/api/income', {
+      const response = await fetch(`/api/${tenant}/income`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

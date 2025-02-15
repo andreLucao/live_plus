@@ -21,7 +21,7 @@ export async function middleware(request) {
       try {
         const verifyResponse = await fetch(`${request.nextUrl.origin}/api/tenants/verify/${tenant}`);
         
-        if (verifyResponse.ok) {
+        if (!verifyResponse.ok) {
           // Tenant doesn't exist, redirect to main site or error page
           return NextResponse.redirect('https://liveplus.pro');
         }

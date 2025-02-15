@@ -54,7 +54,6 @@ export default function HospitalBillManager() {
     }
   }, [darkMode])
 
-  // Função para buscar as despesas da API
   const fetchBills = async () => {
     try {
       const response = await fetch(`/api/${tenant}/bills`)
@@ -75,7 +74,7 @@ export default function HospitalBillManager() {
     e.preventDefault()
     if (newBill.name && newBill.amount && newBill.date && newBill.category) {
       try {
-        const response = await fetch('/api/bills', {
+        const response = await fetch(`/api/${tenant}/bills`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -114,7 +113,7 @@ export default function HospitalBillManager() {
 
   const removeBill = async (id) => {
     try {
-      const response = await fetch(`/api/bills/${id}`, {
+      const response = await fetch(`/api/${tenant}/bills/${id}`, {
         method: 'DELETE',
       })
 
@@ -141,7 +140,7 @@ export default function HospitalBillManager() {
 
   const saveBill = async (id) => {
     try {
-      const response = await fetch('/api/bills', {
+      const response = await fetch(`/api/${tenant}/bills`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

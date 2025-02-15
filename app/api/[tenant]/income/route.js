@@ -28,11 +28,11 @@ export async function GET(request, {params}) {
   }
 }
 
-export async function POST(request) {
+export async function POST(request, {params}) {
   try {
     // Extract tenant from request headers or query parameters
-    const { searchParams } = new URL(request.url);
-    const tenant = searchParams.get('tenant');
+    const id  = await params
+    const tenant = id.tenant
 
     if (!tenant) {
       return NextResponse.json({ error: 'Tenant is required' }, { status: 400 });
@@ -52,11 +52,11 @@ export async function POST(request) {
   }
 }
 
-export async function PUT(request) {
+export async function PUT(request, {params}) {
   try {
     // Extract tenant from request headers or query parameters
-    const { searchParams } = new URL(request.url);
-    const tenant = searchParams.get('tenant');
+    const temp  = await params
+    const tenant = temp.tenant
 
     if (!tenant) {
       return NextResponse.json({ error: 'Tenant is required' }, { status: 400 });
