@@ -218,7 +218,7 @@ export default function HospitalIncomeManager() {
             <PiggyBank size={20} />
             Gestão de Receitas
             </h1>
-            <span className="text-2xl font-semibold text-gray-700 dark:text-gray-300 mt-2">
+            <span className="text-2xl font-semibold text-black dark:text-gray-300 mt-2">
               Total: R$ {totalSum.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>
@@ -281,7 +281,7 @@ export default function HospitalIncomeManager() {
                       </Select>
                     </div>
                   </div>
-                  <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white">
+                  <Button type="submit" className="w-full bg-[#009EE3] hover:bg-[#0080B7] text-white">
                     Adicionar Receita
                   </Button>
                 </form>
@@ -409,11 +409,11 @@ export default function HospitalIncomeManager() {
                       </span>
                       <div className="flex flex-wrap items-center gap-2 md:gap-4">
                         <Badge variant="secondary" className="bg-[#eaf5fd] text-[#009EE3] dark:bg-blue-900 dark:text-blue-100">
-                          R$ {income.amount.toFixed(2)}
+                        R$ {income.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </Badge>
                         <Badge variant="secondary" className="bg-[#eaf5fd] text-[#009EE3] dark:bg-blue-900 dark:text-blue-1000">
                           <Calendar className="h-3 w-3 mr-1" />
-                          {new Date(income.date).toLocaleDateString()}
+                          {new Date(income.date).toLocaleDateString('pt-br')}
                         </Badge>
                         <Badge variant="secondary" className="bg-[#eaf5fd] text-[#009EE3] dark:bg-blue-900 dark:text-blue-100">
                           <Tag className="h-3 w-3 mr-1" />

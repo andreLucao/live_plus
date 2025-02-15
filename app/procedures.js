@@ -514,7 +514,7 @@ export default function ProcedureManager() {
                         <div className="flex flex-wrap gap-2">
                           <Badge 
                             variant="secondary" 
-                            className={`${categoryColors[procedure.category].bg} ${categoryColors[procedure.category].text} ${categoryColors[procedure.category].dark}`}
+                            className={`${categoryColors[procedure.category]?.bg || ''} ${categoryColors[procedure.category]?.text || ''} ${categoryColors[procedure.category]?.dark || ''}`}
                           >
                             <Tag className="h-3 w-3 mr-1" />
                             {procedure.category}

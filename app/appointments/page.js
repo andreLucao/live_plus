@@ -162,39 +162,7 @@ export default function AppointmentManager() {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      {/* Sidebar */}
-      <Sheet>
-        <SheetTrigger asChild>
-          <Button variant="outline" className="fixed left-4 top-4">
-            Serviços Adicionais
-          </Button>
-        </SheetTrigger>
-        <SheetContent side="left">
-          <SheetHeader>
-            <SheetTitle>Serviços Adicionais</SheetTitle>
-          </SheetHeader>
-          <div className="py-4">
-            <ul className="space-y-2">
-              <li>
-                <Button variant="ghost" className="w-full justify-start">
-                  Relatórios
-                </Button>
-              </li>
-              <li>
-                <Button variant="ghost" className="w-full justify-start">
-                  Configurações
-                </Button>
-              </li>
-              <li>
-                <Button variant="ghost" className="w-full justify-start">
-                  Ajuda
-                </Button>
-              </li>
-            </ul>
-          </div>
-        </SheetContent>
-      </Sheet>
-
+      
       <div className="flex-1 p-8">
         <div className="max-w-7xl mx-auto space-y-6">
           {/* Header */}
@@ -202,7 +170,7 @@ export default function AppointmentManager() {
             <h1 className="text-2xl font-bold text-gray-900">Gestão de Agendamentos</h1>
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
               <DialogTrigger asChild>
-                <Button className="bg-blue-600 hover:bg-blue-700">
+                <Button className="bg-[#009EE3] hover:bg-[#0080B7]">
                   <Plus className="mr-2 h-4 w-4" /> Novo Agendamento
                 </Button>
               </DialogTrigger>
@@ -260,7 +228,7 @@ export default function AppointmentManager() {
                       onChange={(e) => setNewAppointment({ ...newAppointment, date: e.target.value })}
                     />
                   </div>
-                  <Button type="submit" className="w-full">Agendar</Button>
+                  <Button type="submit" className="w-full bg-[#009EE3] hover:bg-[#0080B7]">Agendar</Button>
                 </form>
               </DialogContent>
             </Dialog>
