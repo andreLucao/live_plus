@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import { getProcedureModel } from '@/lib/models/Procedures';
 
-
 export async function DELETE(request, { params }) {
   try {
     const { id } = await params;
