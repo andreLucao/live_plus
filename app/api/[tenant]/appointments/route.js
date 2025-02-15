@@ -1,12 +1,13 @@
-//app/api/appointments/route.js
 import { NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
-import { Appointment } from '@/lib/models/Appointment';
+import { getAppointmentModel } from '@/lib/models/Appointment';
 
-export async function GET(request) {
+export async function GET(request, {params}) {
   try {
-    await connectDB();
-    const tenantPath = request.headers.get('x-tenant-path');
+    const connection = await connectDB();
+    const Appointment = getAppointmentModel(connection);
+    const id  = await params
+    const tenantPath = id.tenant
     
     if (!tenantPath) {
       return NextResponse.json(
@@ -25,10 +26,12 @@ export async function GET(request) {
   }
 }
 
-export async function POST(request) {
+export async function POST(request, {params}) {
   try {
-    await connectDB();
-    const tenantPath = request.headers.get('x-tenant-path');
+    const connection = await connectDB();
+    const Appointment = getAppointmentModel(connection);
+    const id = await params;
+    const tenantPath = id.tenant;
     const data = await request.json();
     
     if (!tenantPath) {
@@ -59,12 +62,14 @@ export async function POST(request) {
   }
 }
 
-export async function PUT(request) {
+export async function PUT(request, {params}) {
   try {
-    await connectDB();
-    const tenantPath = request.headers.get('x-tenant-path');
+    const connection = await connectDB();
+    const Appointment = getAppointmentModel(connection);
+    const id = await params;
+    const tenantPath = id.tenant;
     const data = await request.json();
-    const { id, ...updateData } = data;
+    const { id: appointmentId, ...updateData } = data;
     
     if (!tenantPath) {
       return NextResponse.json(
@@ -74,7 +79,7 @@ export async function PUT(request) {
     }
 
     const appointment = await Appointment.findOneAndUpdate(
-      { _id: id, tenantPath },
+      { _id: appointmentId, tenantPath },
       updateData,
       { new: true }
     );

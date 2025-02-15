@@ -2,6 +2,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useParams } from "next/navigation"
 import { Plus, Trash2, Edit2, Save, X, User, Calendar, Tag, AlertCircle, MessageCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -26,6 +27,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet"
 
+
 export default function AppointmentManager() {
   const [appointments, setAppointments] = useState([])
   const [newAppointment, setNewAppointment] = useState({
@@ -45,6 +47,7 @@ export default function AppointmentManager() {
   const [editingId, setEditingId] = useState(null)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [itemToDelete, setItemToDelete] = useState(null)
+  const {tenant} = useParams();
 
   const services = [
     "Consulta Médica",
@@ -62,7 +65,7 @@ export default function AppointmentManager() {
 
   const fetchAppointments = async () => {
     try {
-      const response = await fetch('/api/appointments')
+      const response = await fetch(`/api/${tenant}/appointments`)
       if (!response.ok) throw new Error('Failed to fetch appointments')
       const data = await response.json()
       setAppointments(data)
@@ -77,7 +80,7 @@ export default function AppointmentManager() {
   const addAppointment = async (e) => {
     e.preventDefault()
     try {
-      const response = await fetch('/api/appointments', {
+      const response = await fetch(`/api/${tenant}/appointments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newAppointment),
@@ -94,7 +97,7 @@ export default function AppointmentManager() {
 
   const updateStatus = async (id, newStatus) => {
     try {
-      const response = await fetch('/api/appointments', {
+      const response = await fetch(`/api/${tenant}/appointments`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -117,7 +120,7 @@ export default function AppointmentManager() {
 
   const deleteAppointment = async (id) => {
     try {
-      const response = await fetch(`/api/appointments/${id}`, {
+      const response = await fetch(`/api/${tenant}/appointments/${id}`, {
         method: 'DELETE',
       })
 
