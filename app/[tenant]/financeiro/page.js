@@ -155,7 +155,7 @@ const ComponentSelector = () => {
               className="w-full flex items-center gap-3 justify-start px-3 py-2 rounded-lg transition-all duration-200
                 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
               onClick={() => {
-                router.push(`/${tenant}/telemedicine`);
+                router.push(`/${tenant}/telemedicina`);
                 if (isMobile) setSidebarOpen(false);
               }}
             >
