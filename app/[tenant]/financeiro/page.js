@@ -1,15 +1,18 @@
 'use client'
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { useParams, useRouter } from "next/navigation"
 import HospitalBillManager from '@/app/contas.js';
 import HospitalIncomeManager from '@/app/receita.js';
-import { Menu, X, FileText, PiggyBank, LayoutDashboard } from 'lucide-react';
+import { Menu, X, FileText, PiggyBank, LayoutDashboard, Calendar, Stethoscope } from 'lucide-react';
 import DashboardComponent from '@/app/dashboard.js';
 
 const ComponentSelector = () => {
   const [activeComponent, setActiveComponent] = useState('Dashboard');
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+  const {tenant} = useParams();
+  const router = useRouter();
 
   // Check if we're on mobile and update sidebar state
   useEffect(() => {
@@ -87,6 +90,32 @@ const ComponentSelector = () => {
             >
               <LayoutDashboard size={20} />
               <span>Dashboard</span>
+            </Button>
+
+            <Button
+              variant="ghost"
+              className="w-full flex items-center gap-3 justify-start px-3 py-2 rounded-lg transition-all duration-200
+                hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+              onClick={() => {
+                router.push(`/${tenant}/appointments`);
+                if (isMobile) setSidebarOpen(false);
+              }}
+            >
+              <Calendar size={20} />
+              <span>Agendamentos</span>
+            </Button>
+
+            <Button
+              variant="ghost"
+              className="w-full flex items-center gap-3 justify-start px-3 py-2 rounded-lg transition-all duration-200
+                hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+              onClick={() => {
+                router.push(`/${tenant}/procedures`);
+                if (isMobile) setSidebarOpen(false);
+              }}
+            >
+              <Stethoscope size={20} />
+              <span>Procedimentos</span>
             </Button>
 
             <Button
