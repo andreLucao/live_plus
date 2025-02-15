@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { useParams, useRouter } from "next/navigation"
 import HospitalBillManager from '@/app/contas.js';
 import HospitalIncomeManager from '@/app/receita.js';
-import { Menu, X, FileText, PiggyBank, LayoutDashboard, Calendar, Stethoscope } from 'lucide-react';
+import { Menu, X, FileText, PiggyBank, LayoutDashboard, Calendar, Stethoscope, Video } from 'lucide-react';
 import DashboardComponent from '@/app/dashboard.js';
 
 const ComponentSelector = () => {
@@ -74,7 +74,7 @@ const ComponentSelector = () => {
             </h2>
           </div>
 
-          {/* Navigation Items */}
+          {/* Navigation Items - Reordered */}
           <nav className="flex-1 pt-6 px-2 space-y-2">
             <Button
               variant="ghost"
@@ -90,32 +90,6 @@ const ComponentSelector = () => {
             >
               <LayoutDashboard size={20} />
               <span>Dashboard</span>
-            </Button>
-
-            <Button
-              variant="ghost"
-              className="w-full flex items-center gap-3 justify-start px-3 py-2 rounded-lg transition-all duration-200
-                hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
-              onClick={() => {
-                router.push(`/${tenant}/appointments`);
-                if (isMobile) setSidebarOpen(false);
-              }}
-            >
-              <Calendar size={20} />
-              <span>Agendamentos</span>
-            </Button>
-
-            <Button
-              variant="ghost"
-              className="w-full flex items-center gap-3 justify-start px-3 py-2 rounded-lg transition-all duration-200
-                hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
-              onClick={() => {
-                router.push(`/${tenant}/procedures`);
-                if (isMobile) setSidebarOpen(false);
-              }}
-            >
-              <Stethoscope size={20} />
-              <span>Procedimentos</span>
             </Button>
 
             <Button
@@ -148,6 +122,45 @@ const ComponentSelector = () => {
             >
               <PiggyBank size={20} />
               <span>Receitas Hospitalares</span>
+            </Button>
+
+            <Button
+              variant="ghost"
+              className="w-full flex items-center gap-3 justify-start px-3 py-2 rounded-lg transition-all duration-200
+                hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+              onClick={() => {
+                router.push(`/${tenant}/appointments`);
+                if (isMobile) setSidebarOpen(false);
+              }}
+            >
+              <Calendar size={20} />
+              <span>Agendamentos</span>
+            </Button>
+
+            <Button
+              variant="ghost"
+              className="w-full flex items-center gap-3 justify-start px-3 py-2 rounded-lg transition-all duration-200
+                hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+              onClick={() => {
+                router.push(`/${tenant}/procedures`);
+                if (isMobile) setSidebarOpen(false);
+              }}
+            >
+              <Stethoscope size={20} />
+              <span>Procedimentos</span>
+            </Button>
+
+            <Button
+              variant="ghost"
+              className="w-full flex items-center gap-3 justify-start px-3 py-2 rounded-lg transition-all duration-200
+                hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+              onClick={() => {
+                router.push(`/${tenant}/telemedicine`);
+                if (isMobile) setSidebarOpen(false);
+              }}
+            >
+              <Video size={20} />
+              <span>Telemedicina</span>
             </Button>
           </nav>
         </div>
