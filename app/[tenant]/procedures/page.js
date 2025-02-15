@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useParams } from "next/navigation"
 import { Plus, Trash2, Edit2, Save, X, User, Calendar, Tag, AlertCircle, Stethoscope, UserMinus, Clock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -42,6 +43,7 @@ export default function ProcedureManager() {
   const [nameFilter, setNameFilter] = useState("")
   const [selectedUser, setSelectedUser] = useState(null)
   const [isUserModalOpen, setIsUserModalOpen] = useState(false)
+  const { tenant }= useParams()
 
   // Add this color mapping object after the categories array
   const categoryColors = {
@@ -114,7 +116,7 @@ export default function ProcedureManager() {
   // Função para buscar os procedimentos da API
   const fetchProcedures = async () => {
     try {
-      const response = await fetch('/api/procedures')
+      const response = await fetch(`/api/${tenant}/procedures`)
       if (!response.ok) throw new Error('Failed to fetch procedures')
       const data = await response.json()
       setProcedures(data)
@@ -133,7 +135,7 @@ export default function ProcedureManager() {
     if (newProcedure.name && newProcedure.category && newProcedure.date && 
         newProcedure.doctor && newProcedure.patient) {
       try {
-        const response = await fetch('/api/procedures', {
+        const response = await fetch(`/api/${tenant}/procedures`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(newProcedure),
@@ -169,7 +171,7 @@ export default function ProcedureManager() {
 
   const removeProcedure = async (id) => {
     try {
-      const response = await fetch(`/api/procedures/${id}`, {
+      const response = await fetch(`/api/${tenant}/procedures/${id}`, {
         method: 'DELETE',
       })
 
@@ -197,7 +199,7 @@ export default function ProcedureManager() {
 
   const saveProcedure = async (id) => {
     try {
-      const response = await fetch('/api/procedures', {
+      const response = await fetch(`/api/${tenant}/procedures`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
