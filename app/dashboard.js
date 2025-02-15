@@ -4,6 +4,8 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts'
 import { TrendingUp, TrendingDown, DollarSign, Calendar, AlertCircle, LayoutDashboard  } from "lucide-react"
+import { useParams } from "next/navigation"
+
 
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -17,6 +19,8 @@ export default function HospitalDashboardComponent() {
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
   const [dateRange, setDateRange] = useState("month") // new state for date range toggle
+  const { tenant } = useParams()
+
 
   useEffect(() => {
     fetchData()
@@ -25,8 +29,8 @@ export default function HospitalDashboardComponent() {
   const fetchData = async () => {
     try {
       const [incomesResponse, expensesResponse] = await Promise.all([
-        fetch('/api/income'),
-        fetch('/api/bills')
+        fetch(`/api/${tenant}/income`),
+        fetch(`/api/${tenant}/bills`)
       ])
 
       if (!incomesResponse.ok || !expensesResponse.ok) 
