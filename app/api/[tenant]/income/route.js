@@ -5,12 +5,10 @@ import { getIncomeModel } from '@/lib/models/Income';
 
 
 
-export async function GET(request) {
+export async function GET(request, {params}) {
   try {
-    // Extract tenant from request headers or query parameters
-    
-    const { searchParams } = new URL(request.url);
-    const tenant = searchParams.get('tenant');
+    const id  = await params
+    const tenant = id.tenant
     //console.log(tenant)
 
     if (!tenant) {
@@ -19,14 +17,13 @@ export async function GET(request) {
 
     // Connect to the tenant's specific database
     const connection = await connectDB(tenant);
-
-    // Get the Income model for the tenant's connection
     const Income = getIncomeModel(connection);
 
     // Query the incomes collection for the tenant
     const incomes = await Income.find().sort({ date: -1 });
     return NextResponse.json(incomes);
   } catch (error) {
+    console.error('Error in GET /api/[tenant]/bills:', error);
     return NextResponse.json({ error: 'Failed to fetch income records' }, { status: 500 });
   }
 }

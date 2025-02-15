@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useParams } from "next/navigation"
 import { Plus, Trash2, Edit2, Save, X, DollarSign, Calendar, Tag, AlertCircle, PiggyBank } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -35,6 +36,7 @@ export default function HospitalIncomeManager() {
   const [nameFilter, setNameFilter] = useState("")
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
+  const { tenant } = useParams()
 
   useEffect(() => {
     fetchIncomes()
@@ -50,7 +52,7 @@ export default function HospitalIncomeManager() {
 
   const fetchIncomes = async () => {
     try {
-      const response = await fetch('/api/income')
+      const response = await fetch(`/api/${tenant}/income`)
       if (!response.ok) throw new Error('Failed to fetch incomes')
       const data = await response.json()
       setIncomes(data)
