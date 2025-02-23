@@ -33,7 +33,7 @@ export async function middleware(request) {
   }
 
   // Check if the route should be protected
-  if (pathname.includes('/dashboard') ) {
+  if (pathname.includes('/dash') ) {
     const token = request.cookies.get('auth_token')?.value;
 
     if (!token) {
@@ -50,7 +50,7 @@ export async function middleware(request) {
         const userRole = payload.role;
         if (userRole !== 'owner' && userRole !== 'admin') {
           // Redirect unauthorized users to dashboard
-          return NextResponse.redirect(new URL(`/${tenant}/dashboard`, request.url));
+          return NextResponse.redirect(new URL(`/${tenant}/dash`, request.url));
         }
       }
 

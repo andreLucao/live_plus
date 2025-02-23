@@ -1,187 +1,348 @@
-'use client'
-import React, { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { useParams, useRouter } from "next/navigation"
-import HospitalBillManager from '@/app/contas.js';
-import HospitalIncomeManager from '@/app/receita.js';
-import { Menu, X, FileText, PiggyBank, LayoutDashboard, Calendar, Stethoscope, Video } from 'lucide-react';
-import DashboardComponent from '@/app/dashboard.js';
+//financeiro/page.js
 
-const ComponentSelector = () => {
-  const [activeComponent, setActiveComponent] = useState('Dashboard');
-  const [isSidebarOpen, setSidebarOpen] = useState(true);
-  const [isMobile, setIsMobile] = useState(false);
-  const {tenant} = useParams();
-  const router = useRouter();
+"use client"
 
-  // Check if we're on mobile and update sidebar state
+import { useState, useEffect } from "react"
+import { useParams } from "next/navigation"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts'
+import { TrendingUp, TrendingDown, DollarSign, Calendar, AlertCircle, LayoutDashboard } from "lucide-react"
+import Sidebar from "@/components/Sidebar"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+
+export default function HospitalDashboardComponent() {
+  const [incomes, setIncomes] = useState([])
+  const [expenses, setExpenses] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState("")
+  const [startDate, setStartDate] = useState("")
+  const [endDate, setEndDate] = useState("")
+  const [dateRange, setDateRange] = useState("month")
+  const { tenant } = useParams()
+
   useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-      if (window.innerWidth < 768) {
-        setSidebarOpen(false);
-      } else {
-        setSidebarOpen(true);
-      }
-    };
+    fetchData()
+  }, [])
 
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
+  const fetchData = async () => {
+    try {
+      const [incomesResponse, expensesResponse] = await Promise.all([
+        fetch(`/api/${tenant}/income`),
+        fetch(`/api/${tenant}/bills`)
+      ])
 
-  const toggleSidebar = () => {
-    setSidebarOpen(!isSidebarOpen);
-  };
+      if (!incomesResponse.ok || !expensesResponse.ok) 
+        throw new Error('Failed to fetch data')
+
+      const [incomesData, expensesData] = await Promise.all([
+        incomesResponse.json(),
+        expensesResponse.json()
+      ])
+
+      setIncomes(incomesData)
+      setExpenses(expensesData)
+      setError("")
+    } catch (error) {
+      setError("Falha ao carregar dados do dashboard. Por favor, tente novamente mais tarde.")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const filterData = (data) => {
+    if (!startDate && !endDate) return data
+    
+    return data.filter(item => {
+      const itemDate = new Date(item.date)
+      const start = startDate ? new Date(startDate) : new Date(0)
+      const end = endDate ? new Date(endDate) : new Date()
+      end.setHours(23, 59, 59, 999)
+      
+      return itemDate >= start && itemDate <= end
+    })
+  }
+
+  const filteredIncomes = filterData(incomes)
+  const filteredExpenses = filterData(expenses)
+
+  const totalIncome = filteredIncomes.reduce((sum, income) => sum + income.amount, 0)
+  const totalExpenses = filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0)
+  const profit = totalIncome - totalExpenses
+
+  const getPercentageChange = (current, previous) => {
+    if (previous === 0) return 0
+    return ((current - previous) / previous) * 100
+  }
+
+  const getPreviousPeriodData = () => {
+    const currentStart = startDate ? new Date(startDate) : new Date()
+    const currentEnd = endDate ? new Date(endDate) : new Date()
+    const difference = currentEnd - currentStart
+    const previousStart = new Date(currentStart - difference)
+    
+    const previousIncomes = incomes.filter(item => {
+      const date = new Date(item.date)
+      return date >= previousStart && date < currentStart
+    })
+    
+    const previousExpenses = expenses.filter(item => {
+      const date = new Date(item.date)
+      return date >= previousStart && date < currentStart
+    })
+
+    return {
+      income: previousIncomes.reduce((sum, income) => sum + income.amount, 0),
+      expenses: previousExpenses.reduce((sum, expense) => sum + expense.amount, 0)
+    }
+  }
+
+  const previousPeriod = getPreviousPeriodData()
+  const incomeChange = getPercentageChange(totalIncome, previousPeriod.income)
+  const expensesChange = getPercentageChange(totalExpenses, previousPeriod.expenses)
+
+  const prepareMonthlyData = () => {
+    const monthlyData = {}
+    
+    const allDates = [...filteredIncomes, ...filteredExpenses].map(item => {
+      const date = new Date(item.date)
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+    })
+    
+    const uniqueMonths = [...new Set(allDates)].sort()
+    uniqueMonths.forEach(month => {
+      monthlyData[month] = { month, income: 0, expense: 0 }
+    })
+    
+    filteredIncomes.forEach(item => {
+      const date = new Date(item.date)
+      const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+      monthlyData[monthYear].income += item.amount
+    })
+    
+    filteredExpenses.forEach(item => {
+      const date = new Date(item.date)
+      const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+      monthlyData[monthYear].expense += item.amount
+    })
+    
+    return Object.values(monthlyData).map(item => ({
+      ...item,
+      income: Number(item.income.toFixed(2)),
+      expense: Number(item.expense.toFixed(2)),
+      profit: Number((item.income - item.expense).toFixed(2))
+    }))
+  }
+
+  const chartData = prepareMonthlyData()
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
+        <Sidebar />
+        <main className="flex-1 overflow-y-auto">
+          <div className="flex justify-center items-center h-full">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          </div>
+        </main>
+      </div>
+    )
+  }
 
   return (
-    <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900 relative">
-      {/* Overlay for mobile when sidebar is open */}
-      {isMobile && isSidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-20"
-          onClick={toggleSidebar}
-        />
-      )}
+    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
+      <Sidebar />
+      
+      <main className="flex-1 overflow-y-auto">
+        <div className="p-6 space-y-6">
+          {error && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
 
-      {/* Sidebar */}
-      <div 
-        className={`
-          fixed h-full bg-white dark:bg-gray-800 shadow-lg transition-all duration-300 ease-in-out z-30
-          ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-          ${isMobile ? 'w-[80%] max-w-[280px]' : 'w-64'}
-        `}
-      >
-        {/* Toggle Button - Updated positioning */}
-        <button
-          onClick={toggleSidebar}
-          className={`
-            md:absolute md:right-[-20px] fixed right-4 top-4
-            bg-[#009EE3] text-white rounded-full p-2 shadow-lg 
-            hover:bg-[#0080B7] transition-colors duration-200 cursor-pointer z-50
-            ${isMobile ? (isSidebarOpen ? 'right-4' : 'left-4') : ''}
-          `}
-        >
-          {isSidebarOpen ? <X size={16} /> : <Menu size={16} />}
-        </button>
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <LayoutDashboard size={20} />
+              Dashboard Financeiro
+            </h1>
+            
+            <div className="flex flex-col md:flex-row gap-4 items-end">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="start-date" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Data Inicial
+                </Label>
+                <Input
+                  id="start-date"
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-full md:w-40"
+                />
+              </div>
 
-        {/* Sidebar Content */}
-        <div className="flex flex-col h-full">
-          {/* Logo/Header Area */}
-          <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-            <h2 className="font-bold text-xl text-[#009EE3] dark:text-[#009EE3]">
-              Gerenciador Hospitalar
-            </h2>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="end-date" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Data Final
+                </Label>
+                <Input
+                  id="end-date"
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="w-full md:w-40"
+                />
+              </div>
+            </div>
           </div>
 
-          {/* Navigation Items - Reordered */}
-          <nav className="flex-1 pt-6 px-2 space-y-2">
-            <Button
-              variant="ghost"
-              className={`w-full flex items-center gap-3 justify-start px-3 py-2 rounded-lg transition-all duration-200
-                ${activeComponent === 'Dashboard' 
-                  ? 'bg-[#009EE3]/10 dark:bg-[#009EE3]/20 text-[#009EE3] dark:text-[#009EE3] hover:bg-[#009EE3]/20 dark:hover:bg-[#009EE3]/30' 
-                  : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'}
-              `}
-              onClick={() => {
-                setActiveComponent('Dashboard');
-                if (isMobile) setSidebarOpen(false);
-              }}
-            >
-              <LayoutDashboard size={20} />
-              <span>Dashboard</span>
-            </Button>
+          <div className="grid gap-6 md:grid-cols-3">
+            <Card className="hover:shadow-lg transition-shadow">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Receita Total
+                </CardTitle>
+                <DollarSign className="h-4 w-4 text-[#1e1e1e]" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-[#1e1e1e]">
+                  R${totalIncome.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </div>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                  {incomeChange >= 0 ? (
+                    <span className="text-green-500">+{incomeChange.toFixed(1)}%</span>
+                  ) : (
+                    <span className="text-red-500">{incomeChange.toFixed(1)}%</span>
+                  )}
+                  {" "}vs período anterior
+                </p>
+              </CardContent>
+            </Card>
 
-            <Button
-              variant="ghost"
-              className={`w-full flex items-center gap-3 justify-start px-3 py-2 rounded-lg transition-all duration-200
-                ${activeComponent === 'HospitalBillManager' 
-                  ? 'bg-[#009EE3]/10 dark:bg-[#009EE3]/20 text-[#009EE3] dark:text-[#009EE3] hover:bg-[#009EE3]/20 dark:hover:bg-[#009EE3]/30' 
-                  : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'}
-              `}
-              onClick={() => {
-                setActiveComponent('HospitalBillManager');
-                if (isMobile) setSidebarOpen(false);
-              }}
-            >
-              <FileText size={20} />
-              <span>Despesas Hospitalares</span>
-            </Button>
+            <Card className="hover:shadow-lg transition-shadow">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Despesa Total
+                </CardTitle>
+                <TrendingDown className="h-4 w-4 text-[#1e1e1e]" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-[#1e1e1e]">
+                  R${totalExpenses.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </div>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                  {expensesChange >= 0 ? (
+                    <span className="text-red-500">+{expensesChange.toFixed(1)}%</span>
+                  ) : (
+                    <span className="text-green-500">{expensesChange.toFixed(1)}%</span>
+                  )}
+                  {" "}vs período anterior
+                </p>
+              </CardContent>
+            </Card>
 
-            <Button
-              variant="ghost"
-              className={`w-full flex items-center gap-3 justify-start px-3 py-2 rounded-lg transition-all duration-200
-                ${activeComponent === 'HospitalIncomeManager' 
-                  ? 'bg-[#009EE3]/10 dark:bg-[#009EE3]/20 text-[#009EE3] dark:text-[#009EE3] hover:bg-[#009EE3]/20 dark:hover:bg-[#009EE3]/30' 
-                  : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'}
-              `}
-              onClick={() => {
-                setActiveComponent('HospitalIncomeManager');
-                if (isMobile) setSidebarOpen(false);
-              }}
-            >
-              <PiggyBank size={20} />
-              <span>Receitas Hospitalares</span>
-            </Button>
+            <Card className="hover:shadow-lg transition-shadow">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Resultado
+                </CardTitle>
+                <TrendingUp className="h-4 w-4 text-[#1e1e1e]" />
+              </CardHeader>
+              <CardContent>
+                <div className={`text-2xl font-bold ${profit >= 0 ? 'text-[#1e1e1e]' : 'text-red-500'}`}>
+                  R${profit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </div>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                  Margem: {((profit / totalIncome) * 100).toFixed(1)}%
+                </p>
+              </CardContent>
+            </Card>
+          </div>
 
-            <Button
-              variant="ghost"
-              className="w-full flex items-center gap-3 justify-start px-3 py-2 rounded-lg transition-all duration-200
-                hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
-              onClick={() => {
-                router.push(`/${tenant}/appointments`);
-                if (isMobile) setSidebarOpen(false);
-              }}
-            >
-              <Calendar size={20} />
-              <span>Agendamentos</span>
-            </Button>
+          <div className="grid gap-6 md:grid-cols-2">
+            <Card className="hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Receitas e Despesas
+                </CardTitle>
+                <CardDescription>Análise comparativa mensal</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis 
+                        dataKey="month" 
+                        tickFormatter={(value) => {
+                          const [year, month] = value.split('-')
+                          return `${month}/${year.slice(2)}`
+                        }}
+                      />
+                      <YAxis />
+                      <Tooltip 
+                        formatter={(value) => [`R$${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, '']}
+                        labelFormatter={(label) => {
+                          const [year, month] = label.split('-')
+                          return `${month}/${year}`
+                        }}
+                      />
+                      <Legend />
+                      <Bar dataKey="income" name="Receitas" fill="#2196F3" />
+                      <Bar dataKey="expense" name="Despesas" fill="#F44336" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
 
-            <Button
-              variant="ghost"
-              className="w-full flex items-center gap-3 justify-start px-3 py-2 rounded-lg transition-all duration-200
-                hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
-              onClick={() => {
-                router.push(`/${tenant}/procedures`);
-                if (isMobile) setSidebarOpen(false);
-              }}
-            >
-              <Stethoscope size={20} />
-              <span>Procedimentos</span>
-            </Button>
-
-            <Button
-              variant="ghost"
-              className="w-full flex items-center gap-3 justify-start px-3 py-2 rounded-lg transition-all duration-200
-                hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
-              onClick={() => {
-                router.push(`/${tenant}/telemedicina`);
-                if (isMobile) setSidebarOpen(false);
-              }}
-            >
-              <Video size={20} />
-              <span>Telemedicina</span>
-            </Button>
-          </nav>
+            <Card className="hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Resultado Mensal
+                </CardTitle>
+                <CardDescription>Evolução do resultado operacional</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis 
+                        dataKey="month" 
+                        tickFormatter={(value) => {
+                          const [year, month] = value.split('-')
+                          return `${month}/${year.slice(2)}`
+                        }}
+                      />
+                      <YAxis />
+                      <Tooltip 
+                        formatter={(value) => [`R$${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, '']}
+                        labelFormatter={(label) => {
+                          const [year, month] = label.split('-')
+                          return `${month}/${year}`
+                        }}
+                      />
+                      <Legend />
+                      <Line 
+                        type="monotone" 
+                        dataKey="profit" 
+                        name="Resultado"
+                        stroke="#22c55e"
+                        strokeWidth={2}
+                        dot={{ r: 4 }}
+                        activeDot={{ r: 6 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
-      </div>
-
-      {/* Main Content */}
-      <div 
-        className={`
-          flex-1 transition-all duration-300 ease-in-out
-          ${!isMobile && isSidebarOpen ? 'md:ml-64' : ''}
-          w-full
-        `}
-      >
-        <div className="p-4 md:p-8 pt-16 md:pt-8">
-          {activeComponent === 'Dashboard' ? <DashboardComponent /> :
-           activeComponent === 'HospitalBillManager' ? <HospitalBillManager /> : 
-           <HospitalIncomeManager />}
-        </div>
-      </div>
+        </main>
     </div>
   );
-};
-
-export default ComponentSelector;
+}
