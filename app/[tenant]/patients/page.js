@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar, Clock } from 'lucide-react';
 import Link from 'next/link';
@@ -8,6 +9,7 @@ import Link from 'next/link';
 export default function PatientsPage() {
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { tenant } = useParams()
 
   useEffect(() => {
     fetchPatients();
@@ -15,7 +17,7 @@ export default function PatientsPage() {
 
   const fetchPatients = async () => {
     try {
-      const response = await fetch('/api/patients');
+      const response = await fetch(`/api/${tenant}/patients`);
       if (!response.ok) throw new Error('Failed to fetch patients');
       const data = await response.json();
       setPatients(data);
