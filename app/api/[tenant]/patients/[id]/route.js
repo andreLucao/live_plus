@@ -1,13 +1,29 @@
 import { NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
-import User from '@/lib/models/User';
-import PatientDetails from '@/lib/models/PatientDetails';
+import { getUserModel } from '@/lib/models/User';
+import { getPatientDetailsModel } from '@/lib/models/PatientDetails';
 
 export async function GET(request, { params }) {
   try {
-    await connectDB();
+    const id = await params;
+    const tenant = id.tenant;
+    const userId = id.id;
 
-    const user = await User.findById(params.id).select('-password');
+    if (!tenant) {
+      return NextResponse.json({ error: 'Tenant is required' }, { status: 400 });
+    }
+
+    // Connect to the tenant's specific database
+    const connection = await connectDB(tenant);
+    const User = getUserModel(connection);
+    const PatientDetails = getPatientDetailsModel(connection);
+
+    // Find user and details with tenant-specific paths
+    const user = await User.findOne({
+      _id: userId,
+      tenantPath: tenant
+    }).select('-password');
+
     if (!user) {
       return NextResponse.json(
         { error: 'Paciente não encontrado' },
@@ -15,25 +31,32 @@ export async function GET(request, { params }) {
       );
     }
 
-    const details = await PatientDetails.findOne({ userId: params.id });
-    
-    // Combinar dados do usuário com detalhes do paciente
+    const details = await PatientDetails.findOne({
+      userId: userId,
+      tenantPath: tenant
+    });
+
+    // Combine user data with patient details
     const patientData = {
       ...user.toObject(),
       ...(details ? details.toObject() : {
-        clinicalHistory: [],
-        surgicalHistory: [],
-        familyHistory: [],
-        habits: [],
-        allergies: [],
-        medications: [],
-        lastDiagnoses: []
+        clinicalHistory: '',
+        surgicalHistory: '',
+        familyHistory: '',
+        habits: '',
+        allergies: '',
+        medications: '',
+        lastDiagnosis: {
+          date: new Date(),
+          diagnosis: '',
+          notes: ''
+        }
       })
     };
 
     return NextResponse.json(patientData);
   } catch (error) {
-    console.error('Error in GET /api/patients/[id]:', error);
+    console.error('Error in GET /api/[tenant]/patients/[id]:', error);
     return NextResponse.json(
       { error: 'Falha ao buscar detalhes do paciente' },
       { status: 500 }
@@ -43,22 +66,40 @@ export async function GET(request, { params }) {
 
 export async function PUT(request, { params }) {
   try {
-    await connectDB();
+    const id = await params;
+    const tenant = id.tenant;
+    const userId = id.id;
+
+    if (!tenant) {
+      return NextResponse.json({ error: 'Tenant is required' }, { status: 400 });
+    }
+
+    // Connect to the tenant's specific database
+    const connection = await connectDB(tenant);
+    const PatientDetails = getPatientDetailsModel(connection);
 
     const body = await request.json();
-    
-    // Atualizar detalhes do paciente
+
+    // Update patient details with tenant path
     const details = await PatientDetails.findOneAndUpdate(
-      { userId: params.id },
+      { 
+        userId: userId,
+        tenantPath: tenant 
+      },
       { 
         $set: {
+          tenantPath: tenant, // Ensure tenantPath is set
           clinicalHistory: body.clinicalHistory,
           surgicalHistory: body.surgicalHistory,
           familyHistory: body.familyHistory,
           habits: body.habits,
           allergies: body.allergies,
           medications: body.medications,
-          lastDiagnoses: body.lastDiagnoses
+          lastDiagnosis: body.lastDiagnosis || {
+            date: new Date(),
+            diagnosis: '',
+            notes: ''
+          }
         }
       },
       { 
@@ -69,7 +110,7 @@ export async function PUT(request, { params }) {
 
     return NextResponse.json(details);
   } catch (error) {
-    console.error('Error in PUT /api/patients/[id]:', error);
+    console.error('Error in PUT /api/[tenant]/patients/[id]:', error);
     return NextResponse.json(
       { error: 'Falha ao atualizar detalhes do paciente' },
       { status: 500 }

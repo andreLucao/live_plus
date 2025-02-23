@@ -1,21 +1,29 @@
 import { NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
-import User from '@/lib/models/User';
+import { getPatientDetailsModel } from '@/lib/models/PatientDetails';
 
-export async function GET() {
+export async function GET(request, { params }) {
   try {
-    await connectDB();
+    const id = await params;
+    const tenant = id.tenant;
 
-    // Buscar todos os usuários, excluindo a senha
-    const users = await User.find()
-      .select('-password')
+    if (!tenant) {
+      return NextResponse.json({ error: 'Tenant is required' }, { status: 400 });
+    }
+
+    // Connect to the database
+    const connection = await connectDB(tenant);
+    const PatientDetails = getPatientDetailsModel(connection);
+
+    // Query patient details for the specific tenant
+    const patientDetails = await PatientDetails.find({ tenantPath: tenant })
       .sort({ createdAt: -1 });
 
-    return NextResponse.json(users);
+    return NextResponse.json(patientDetails);
   } catch (error) {
-    console.error('Error in GET /api/patients:', error);
+    console.error('Error in GET /api/[tenant]/patient-details:', error);
     return NextResponse.json(
-      { error: 'Falha ao buscar usuários' },
+      { error: 'Failed to fetch patient details' },
       { status: 500 }
     );
   }
