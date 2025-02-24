@@ -21,9 +21,10 @@ import {
   ChevronRight,
   BriefcaseMedical,
   ClipboardList,
-  Lock
-} from 'lucide-react';
-
+  Lock,
+  CircleUserRound,
+  BookUser
+  } from 'lucide-react';
 const createNavigationItems = (tenant) => [
   {
     icon: <PiggyBank size={20} />, 
@@ -39,7 +40,9 @@ const createNavigationItems = (tenant) => [
     label: "Médico",
     subItems: [
       { icon: <Calendar size={20} />, label: "Agendamentos", path: `/${tenant}/appointments` },
-      { icon: <Stethoscope size={20} />, label: "Gestão de Procedimentos", path: `/${tenant}/procedures` }
+      { icon: <Stethoscope size={20} />, label: "Gestão de Procedimentos", path: `/${tenant}/procedures` },
+      { icon: <BookUser size={20} />, label: "Pacientes", path: `/${tenant}/patients` }
+
     ]
   },
   {
@@ -51,9 +54,15 @@ const createNavigationItems = (tenant) => [
         label: "Gestão de Estoque", 
         isLocked: true,
         secondaryIcon: <Lock size={16} className="ml-2" />
+      },
+      { 
+        icon: <CircleUserRound size={20} />, 
+        label: "Gestão de Usuários", 
+        isLocked: true,
+        secondaryIcon: <Lock size={16} className="ml-2" />
       }
     ]
-  }
+  },
 ];
 
 export default function Sidebar({ user, onLogout }) {

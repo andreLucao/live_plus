@@ -18,6 +18,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import Sidebar from "@/components/Sidebar"
 
 export default function ProcedureManager() {
   // Estado para armazenar a lista de procedimentos e controles da interface
@@ -45,7 +46,7 @@ export default function ProcedureManager() {
   const [isUserModalOpen, setIsUserModalOpen] = useState(false)
   const { tenant }= useParams()
 
-  // Add this color mapping object after the categories array
+  // Category colors configuration
   const categoryColors = {
     "Cirurgia": {
       bg: "bg-[#fde7e7]",
@@ -99,12 +100,24 @@ export default function ProcedureManager() {
     }
   }
 
-  // Efeito para carregar os procedimentos ao montar o componente
+  // Available categories
+  const categories = [
+    "Cirurgia",
+    "Consulta",
+    "Exame",
+    "Procedimento Ambulatorial",
+    "Tratamento",
+    "Emergência",
+    "Internação",
+    "Reabilitação",
+    "Diagnóstico por Imagem",
+    "Outro"
+  ]
+
   useEffect(() => {
     fetchProcedures()
   }, [])
 
-  // Efeito para controlar o modo escuro
   useEffect(() => {
     if (darkMode) {
       document.documentElement.classList.add("dark")
@@ -113,7 +126,6 @@ export default function ProcedureManager() {
     }
   }, [darkMode])
 
-  // Função para buscar os procedimentos da API
   const fetchProcedures = async () => {
     try {
       const response = await fetch(`/api/${tenant}/procedures`)
@@ -129,7 +141,6 @@ export default function ProcedureManager() {
     }
   }
 
-  // Função para adicionar um novo procedimento
   const addProcedure = async (e) => {
     e.preventDefault()
     if (newProcedure.name && newProcedure.category && newProcedure.date && 
@@ -153,7 +164,6 @@ export default function ProcedureManager() {
     }
   }
 
-  // Funções para gerenciar a exclusão de procedimentos
   const handleDeleteClick = (procedure) => {
     setItemToDelete(procedure)
     setIsDeleteModalOpen(true)
@@ -184,7 +194,6 @@ export default function ProcedureManager() {
     }
   }
 
-  // Funções para edição de procedimentos
   const editProcedure = (id) => {
     const procedureToEdit = procedures.find(procedure => procedure._id === id)
     setNewProcedure({
@@ -224,7 +233,6 @@ export default function ProcedureManager() {
     setNewProcedure({ name: "", category: "", date: "", doctor: "", patient: "" })
   }
 
-  // Função para filtrar dados por data
   const filterData = (data) => {
     if (!startDate && !endDate) return data
     
@@ -238,21 +246,6 @@ export default function ProcedureManager() {
     })
   }
 
-  // Lista de categorias disponíveis
-  const categories = [
-    "Cirurgia",
-    "Consulta",
-    "Exame",
-    "Procedimento Ambulatorial",
-    "Tratamento",
-    "Emergência",
-    "Internação",
-    "Reabilitação",
-    "Diagnóstico por Imagem",
-    "Outro"
-  ]
-
-  // Add this utility function inside the component
   const getTimeAgo = (date) => {
     const now = new Date()
     const procedureDate = new Date(date)
@@ -267,7 +260,6 @@ export default function ProcedureManager() {
     return `${Math.floor(diffDays / 365)} anos atrás`
   }
 
-  // Filtragem dos procedimentos
   const filteredProcedures = filterData(procedures).filter((procedure) => {
     const categoryMatch = categoryFilter === "all" || 
       procedure.category === categoryFilter
@@ -278,344 +270,336 @@ export default function ProcedureManager() {
     return categoryMatch && nameMatch
   })
 
-  // Renderização do estado de carregamento
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="flex h-screen bg-gray-50">
+        <Sidebar />
+        <main className="flex-1 overflow-y-auto">
+          <div className="flex justify-center items-center h-full">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          </div>
+        </main>
       </div>
     )
   }
 
-  // Renderização principal do componente
   return (
-    <div className="space-y-6 p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      <div className="max-w-7xl mx-auto">
-        {/* Cabeçalho */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-          <div className="flex flex-col">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              <Stethoscope size={24} />
-              Gestão de Procedimentos Médicos
-            </h1>
-            <span className="text-gray-600 dark:text-gray-400 mt-1">
-              Total de Procedimentos: {filteredProcedures.length}
-            </span>
-          </div>
+    <div className="flex h-screen bg-gray-50">
+      <Sidebar />
+      <main className="flex-1 overflow-y-auto">
+        <div className="space-y-6 p-6">
+          <div className="max-w-7xl mx-auto">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+              <div className="flex flex-col">
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                  <Stethoscope size={24} />
+                  Gestão de Procedimentos Médicos
+                </h1>
+                <span className="text-gray-600 dark:text-gray-400 mt-1">
+                  Total de Procedimentos: {filteredProcedures.length}
+                </span>
+              </div>
 
-          <div className="flex items-center gap-4">
-            {/* Modal para adicionar novo procedimento */}
-            <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-              <DialogTrigger asChild>
-                <Button className="bg-[#009EE3] hover:bg-[#0080B7] text-white">
-                  <Plus className="mr-2 h-4 w-4" /> Novo Procedimento
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                  <DialogTitle>Adicionar Novo Procedimento</DialogTitle>
-                </DialogHeader>
-                <form onSubmit={addProcedure} className="space-y-4">
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="procedureName">
-                        Nome do Procedimento
-                      </Label>
-                      <Input
-                        id="procedureName"
-                        value={newProcedure.name}
-                        onChange={(e) => setNewProcedure({ ...newProcedure, name: e.target.value })}
-                        placeholder="Digite o nome do procedimento"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="procedureCategory">
-                        Categoria
-                      </Label>
-                      <Select 
-                        value={newProcedure.category} 
-                        onValueChange={(value) => setNewProcedure({ ...newProcedure, category: value })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione a categoria" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {categories.map((category) => (
-                            <SelectItem key={category} value={category}>
-                              {category}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="procedureDate">
-                        Data
-                      </Label>
-                      <Input
-                        id="procedureDate"
-                        type="date"
-                        value={newProcedure.date}
-                        onChange={(e) => setNewProcedure({ ...newProcedure, date: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                    <Label htmlFor="procedureDoctor">
-                        Médico Responsável
-                      </Label>
-                      <Input
-                        id="procedureDoctor"
-                        value={newProcedure.doctor}
-                        onChange={(e) => setNewProcedure({ ...newProcedure, doctor: e.target.value })}
-                        placeholder="Nome do médico"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="procedurePatient">
-                        Paciente
-                      </Label>
-                      <Input
-                        id="procedurePatient"
-                        value={newProcedure.patient}
-                        onChange={(e) => setNewProcedure({ ...newProcedure, patient: e.target.value })}
-                        placeholder="Nome do paciente"
-                      />
-                    </div>
-                  </div>
-                  <Button type="submit" className="w-full bg-[#009EE3] hover:bg-[#0080B7]">
-                    Adicionar Procedimento
-                  </Button>
-                </form>
-              </DialogContent>
-            </Dialog>
-            <Switch checked={darkMode} onCheckedChange={setDarkMode} />
-          </div>
-        </div>
-
-        {/* Mensagem de erro */}
-        {error && (
-          <Alert variant="destructive" className="mb-4">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-
-        {/* Filtros */}
-        <div className="flex flex-col md:flex-row justify-end items-start md:items-center gap-4 mb-6">
-          <div className="flex flex-col md:flex-row gap-4 items-end">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="start-date">
-                Data Inicial
-              </Label>
-              <Input
-                id="start-date"
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="w-full md:w-40"
-              />
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="end-date">
-                Data Final
-              </Label>
-              <Input
-                id="end-date"
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="w-full md:w-40"
-              />
-            </div>
-
-            <Input
-              placeholder="Buscar por nome, médico ou paciente"
-              value={nameFilter}
-              onChange={(e) => setNameFilter(e.target.value)}
-              className="w-full md:w-[280px]"
-            />
-
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-full md:w-[200px]">
-                <SelectValue placeholder="Filtrar por categoria" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas as Categorias</SelectItem>
-                {categories.map((category) => (
-                  <SelectItem key={category} value={category}>
-                    {category}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        {/* Lista de procedimentos */}
-        <Card>
-          <CardContent>
-            <ul className="space-y-2">
-              {filteredProcedures.map((procedure) => (
-                <li
-                  key={procedure._id}
-                  className="flex flex-col md:flex-row justify-between items-start md:items-center p-3 bg-white dark:bg-gray-800 rounded-md shadow-sm transition-all duration-300 hover:shadow-md gap-4"
-                >
-                  {editingId === procedure._id ? (
-                    <div className="flex flex-col md:flex-row w-full gap-2">
-                      <Input
-                        value={newProcedure.name}
-                        onChange={(e) => setNewProcedure({ ...newProcedure, name: e.target.value })}
-                        className="flex-1"
-                      />
-                      <Select
-                        value={newProcedure.category}
-                        onValueChange={(value) => setNewProcedure({ ...newProcedure, category: value })}
-                      >
-                        <SelectTrigger className="w-40">
-                          <SelectValue placeholder="Categoria" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {categories.map((category) => (
-                            <SelectItem key={category} value={category}>
-                              {category}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Input
-                        type="date"
-                        value={newProcedure.date}
-                        onChange={(e) => setNewProcedure({ ...newProcedure, date: e.target.value })}
-                        className="w-40"
-                      />
-                      <Input
-                        value={newProcedure.doctor}
-                        onChange={(e) => setNewProcedure({ ...newProcedure, doctor: e.target.value })}
-                        className="w-48"
-                        placeholder="Médico"
-                      />
-                      <Input
-                        value={newProcedure.patient}
-                        onChange={(e) => setNewProcedure({ ...newProcedure, patient: e.target.value })}
-                        className="w-48"
-                        placeholder="Paciente"
-                      />
-                      <Button variant="ghost" size="icon" onClick={() => saveProcedure(procedure._id)}>
-                        <Save className="h-4 w-4 text-blue-600" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={cancelEdit}>
-                        <X className="h-4 w-4 text-red-500" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="flex flex-col gap-1">
-                        <span className="font-medium text-gray-800 dark:text-gray-200">
-                          {procedure.name}
-                        </span>
-                        <div className="flex flex-wrap gap-2">
-                          <Badge 
-                            variant="secondary" 
-                            className={`${categoryColors[procedure.category]?.bg || ''} ${categoryColors[procedure.category]?.text || ''} ${categoryColors[procedure.category]?.dark || ''}`}
+              <div className="flex items-center gap-4">
+                <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+                  <DialogTrigger asChild>
+                    <Button className="bg-[#009EE3] hover:bg-[#0080B7] text-white">
+                      <Plus className="mr-2 h-4 w-4" /> Novo Procedimento
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                      <DialogTitle>Adicionar Novo Procedimento</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={addProcedure} className="space-y-4">
+                      <div className="space-y-4">
+                        <div>
+                          <Label htmlFor="procedureName">Nome do Procedimento</Label>
+                          <Input
+                            id="procedureName"
+                            value={newProcedure.name}
+                            onChange={(e) => setNewProcedure({ ...newProcedure, name: e.target.value })}
+                            placeholder="Digite o nome do procedimento"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="procedureCategory">Categoria</Label>
+                          <Select 
+                            value={newProcedure.category} 
+                            onValueChange={(value) => setNewProcedure({ ...newProcedure, category: value })}
                           >
-                            <Tag className="h-3 w-3 mr-1" />
-                            {procedure.category}
-                          </Badge>
-                          <Badge variant="secondary" className="bg-[#eaf5fd] text-[#009EE3] dark:bg-blue-900 dark:text-blue-100">
-                            <Calendar className="h-3 w-3 mr-1" />
-                            {new Date(procedure.date).toLocaleDateString('pt-BR')}
-                          </Badge>
-                          <Badge variant="secondary" className="bg-[#f5eafd] text-[#9E00E3] dark:bg-purple-900 dark:text-purple-100">
-                            <Clock className="h-3 w-3 mr-1" />
-                            {getTimeAgo(procedure.date)}
-                          </Badge>
-                          <Badge 
-                            variant="secondary" 
-                            className="bg-[#eaf5fd] text-[#009EE3] dark:bg-blue-900 dark:text-blue-100 cursor-pointer hover:bg-[#d5ebfd]"
-                            onClick={() => {
-                              setSelectedUser({ name: procedure.doctor, type: 'doctor' })
-                              setIsUserModalOpen(true)
-                            }}
-                          >
-                            <User className="h-3 w-3 mr-1" />
-                            {procedure.doctor}
-                          </Badge>
-                          <Badge 
-                            variant="secondary" 
-                            className="bg-[#eaf5fd] text-[#009EE3] dark:bg-blue-900 dark:text-blue-100 cursor-pointer hover:bg-[#d5ebfd]"
-                            onClick={() => {
-                              setSelectedUser({ name: procedure.patient, type: 'patient' })
-                              setIsUserModalOpen(true)
-                            }}
-                          >
-                            <UserMinus className="h-3 w-3 mr-1" />
-                            {procedure.patient}
-                          </Badge>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione a categoria" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {categories.map((category) => (
+                                <SelectItem key={category} value={category}>
+                                  {category}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label htmlFor="procedureDate">Data</Label>
+                          <Input
+                            id="procedureDate"
+                            type="date"
+                            value={newProcedure.date}
+                            onChange={(e) => setNewProcedure({ ...newProcedure, date: e.target.value })}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="procedureDoctor">Médico Responsável</Label><Input
+                            id="procedureDoctor"
+                            value={newProcedure.doctor}
+                            onChange={(e) => setNewProcedure({ ...newProcedure, doctor: e.target.value })}
+                            placeholder="Nome do médico"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="procedurePatient">Paciente</Label>
+                          <Input
+                            id="procedurePatient"
+                            value={newProcedure.patient}
+                            onChange={(e) => setNewProcedure({ ...newProcedure, patient: e.target.value })}
+                            placeholder="Nome do paciente"
+                          />
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="icon" onClick={() => editProcedure(procedure._id)}>
-                          <Edit2 className="h-4 w-4 text-[#009EE3]" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(procedure)}>
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
-                      </div>
-                    </>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-
-        {/* Modal de confirmação de exclusão */}
-        <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Confirmar Exclusão</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <p>Para confirmar a exclusão, digite o nome do procedimento: <strong>{itemToDelete?.name}</strong></p>
-              <Input
-                value={deleteConfirmation}
-                onChange={(e) => setDeleteConfirmation(e.target.value)}
-                placeholder="Digite o nome do procedimento"
-              />
-              <div className="flex justify-end gap-4">
-                <Button variant="outline" onClick={() => setIsDeleteModalOpen(false)}>
-                  Cancelar
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={handleDeleteConfirm}
-                  disabled={deleteConfirmation !== itemToDelete?.name}
-                >
-                  Excluir
-                </Button>
+                      <Button type="submit" className="w-full bg-[#009EE3] hover:bg-[#0080B7]">
+                        Adicionar Procedimento
+                      </Button>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+                <Switch checked={darkMode} onCheckedChange={setDarkMode} />
               </div>
             </div>
-          </DialogContent>
-        </Dialog>
 
-        {/* Modal de perfil do usuário */}
-        <Dialog open={isUserModalOpen} onOpenChange={setIsUserModalOpen}>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>
-                {selectedUser?.type === 'doctor' ? 'Perfil do Médico' : 'Perfil do Paciente'}
-              </DialogTitle>
-            </DialogHeader>
-            <div className="flex flex-col items-center gap-4 py-4">
-              <div className="h-24 w-24 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-                <User className="h-12 w-12 text-gray-500 dark:text-gray-400" />
+            {/* Mensagem de erro */}
+            {error && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            {/* Filtros */}
+            <div className="flex flex-col md:flex-row justify-end items-start md:items-center gap-4 mb-6">
+              <div className="flex flex-col md:flex-row gap-4 items-end">
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="start-date">Data Inicial</Label>
+                  <Input
+                    id="start-date"
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="w-full md:w-40"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="end-date">Data Final</Label>
+                  <Input
+                    id="end-date"
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="w-full md:w-40"
+                  />
+                </div>
+
+                <Input
+                  placeholder="Buscar por nome, médico ou paciente"
+                  value={nameFilter}
+                  onChange={(e) => setNameFilter(e.target.value)}
+                  className="w-full md:w-[280px]"
+                />
+
+                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                  <SelectTrigger className="w-full md:w-[200px]">
+                    <SelectValue placeholder="Filtrar por categoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas as Categorias</SelectItem>
+                    {categories.map((category) => (
+                      <SelectItem key={category} value={category}>
+                        {category}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              <h2 className="text-xl font-semibold text-center">{selectedUser?.name}</h2>
             </div>
-          </DialogContent>
-        </Dialog>
-      </div>
+
+            {/* Lista de procedimentos */}
+            <Card>
+              <CardContent>
+                <ul className="space-y-2">
+                  {filteredProcedures.map((procedure) => (
+                    <li
+                      key={procedure._id}
+                      className="flex flex-col md:flex-row justify-between items-start md:items-center p-3 bg-white dark:bg-gray-800 rounded-md shadow-sm transition-all duration-300 hover:shadow-md gap-4"
+                    >
+                      {editingId === procedure._id ? (
+                        <div className="flex flex-col md:flex-row w-full gap-2">
+                          <Input
+                            value={newProcedure.name}
+                            onChange={(e) => setNewProcedure({ ...newProcedure, name: e.target.value })}
+                            className="flex-1"
+                          />
+                          <Select
+                            value={newProcedure.category}
+                            onValueChange={(value) => setNewProcedure({ ...newProcedure, category: value })}
+                          >
+                            <SelectTrigger className="w-40">
+                              <SelectValue placeholder="Categoria" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {categories.map((category) => (
+                                <SelectItem key={category} value={category}>
+                                  {category}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Input
+                            type="date"
+                            value={newProcedure.date}
+                            onChange={(e) => setNewProcedure({ ...newProcedure, date: e.target.value })}
+                            className="w-40"
+                          />
+                          <Input
+                            value={newProcedure.doctor}
+                            onChange={(e) => setNewProcedure({ ...newProcedure, doctor: e.target.value })}
+                            className="w-48"
+                            placeholder="Médico"
+                          />
+                          <Input
+                            value={newProcedure.patient}
+                            onChange={(e) => setNewProcedure({ ...newProcedure, patient: e.target.value })}
+                            className="w-48"
+                            placeholder="Paciente"
+                          />
+                          <Button variant="ghost" size="icon" onClick={() => saveProcedure(procedure._id)}>
+                            <Save className="h-4 w-4 text-blue-600" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={cancelEdit}>
+                            <X className="h-4 w-4 text-red-500" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex flex-col gap-1">
+                            <span className="font-medium text-gray-800 dark:text-gray-200">
+                              {procedure.name}
+                            </span>
+                            <div className="flex flex-wrap gap-2">
+                              <Badge 
+                                variant="secondary" 
+                                className={`${categoryColors[procedure.category]?.bg || ''} ${categoryColors[procedure.category]?.text || ''} ${categoryColors[procedure.category]?.dark || ''}`}
+                              >
+                                <Tag className="h-3 w-3 mr-1" />
+                                {procedure.category}
+                              </Badge>
+                              <Badge variant="secondary" className="bg-[#eaf5fd] text-[#009EE3] dark:bg-blue-900 dark:text-blue-100">
+                                <Calendar className="h-3 w-3 mr-1" />
+                                {new Date(procedure.date).toLocaleDateString('pt-BR')}
+                              </Badge>
+                              <Badge variant="secondary" className="bg-[#f5eafd] text-[#9E00E3] dark:bg-purple-900 dark:text-purple-100">
+                                <Clock className="h-3 w-3 mr-1" />
+                                {getTimeAgo(procedure.date)}
+                              </Badge>
+                              <Badge 
+                                variant="secondary" 
+                                className="bg-[#eaf5fd] text-[#009EE3] dark:bg-blue-900 dark:text-blue-100 cursor-pointer hover:bg-[#d5ebfd]"
+                                onClick={() => {
+                                  setSelectedUser({ name: procedure.doctor, type: 'doctor' })
+                                  setIsUserModalOpen(true)
+                                }}
+                              >
+                                <User className="h-3 w-3 mr-1" />
+                                {procedure.doctor}
+                              </Badge>
+                              <Badge 
+                                variant="secondary" 
+                                className="bg-[#eaf5fd] text-[#009EE3] dark:bg-blue-900 dark:text-blue-100 cursor-pointer hover:bg-[#d5ebfd]"
+                                onClick={() => {
+                                  setSelectedUser({ name: procedure.patient, type: 'patient' })
+                                  setIsUserModalOpen(true)
+                                }}
+                              >
+                                <UserMinus className="h-3 w-3 mr-1" />
+                                {procedure.patient}
+                              </Badge>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button variant="ghost" size="icon" onClick={() => editProcedure(procedure._id)}>
+                              <Edit2 className="h-4 w-4 text-[#009EE3]" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(procedure)}>
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </div>
+                        </>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+
+            {/* Modal de confirmação de exclusão */}
+            <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Confirmar Exclusão</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <p>Para confirmar a exclusão, digite o nome do procedimento: <strong>{itemToDelete?.name}</strong></p>
+                  <Input
+                    value={deleteConfirmation}
+                    onChange={(e) => setDeleteConfirmation(e.target.value)}
+                    placeholder="Digite o nome do procedimento"
+                  />
+                  <div className="flex justify-end gap-4">
+                    <Button variant="outline" onClick={() => setIsDeleteModalOpen(false)}>
+                      Cancelar
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={handleDeleteConfirm}
+                      disabled={deleteConfirmation !== itemToDelete?.name}
+                    >
+                      Excluir
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            {/* Modal de perfil do usuário */}
+            <Dialog open={isUserModalOpen} onOpenChange={setIsUserModalOpen}>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle>
+                    {selectedUser?.type === 'doctor' ? 'Perfil do Médico' : 'Perfil do Paciente'}
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="flex flex-col items-center gap-4 py-4">
+                  <div className="h-24 w-24 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                    <User className="h-12 w-12 text-gray-500 dark:text-gray-400" />
+                  </div>
+                  <h2 className="text-xl font-semibold text-center">{selectedUser?.name}</h2>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </div>
+      </main>
     </div>
   )
 }

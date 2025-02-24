@@ -1,4 +1,3 @@
-//app/appointments/page.js
 "use client"
 
 import { useState, useEffect } from "react"
@@ -19,14 +18,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet"
-
+import Sidebar from "@/components/Sidebar"
 
 export default function AppointmentManager() {
   const [appointments, setAppointments] = useState([])
@@ -157,157 +149,164 @@ export default function AppointmentManager() {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="flex h-screen bg-gray-50">
+        <Sidebar />
+        <main className="flex-1 overflow-y-auto">
+          <div className="flex justify-center items-center h-full">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          </div>
+        </main>
       </div>
     )
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      
-      <div className="flex-1 p-8">
-        <div className="max-w-7xl mx-auto space-y-6">
-          {/* Header */}
-          <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-gray-900">Gestão de Agendamentos</h1>
-            <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-              <DialogTrigger asChild>
-                <Button className="bg-[#009EE3] hover:bg-[#0080B7]">
-                  <Plus className="mr-2 h-4 w-4" /> Novo Agendamento
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Novo Agendamento</DialogTitle>
-                </DialogHeader>
-                <form onSubmit={addAppointment} className="space-y-4">
-                  <div>
-                    <Label htmlFor="patient">Paciente</Label>
-                    <Input
-                      id="patient"
-                      required
-                      value={newAppointment.patient}
-                      onChange={(e) => setNewAppointment({ ...newAppointment, patient: e.target.value })}
-                      placeholder="Nome do paciente"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="professional">Profissional</Label>
-                    <Input
-                      id="professional"
-                      required
-                      value={newAppointment.professional}
-                      onChange={(e) => setNewAppointment({ ...newAppointment, professional: e.target.value })}
-                      placeholder="Nome do profissional"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="service">Serviço</Label>
-                    <Select
-                      required
-                      value={newAppointment.service}
-                      onValueChange={(value) => setNewAppointment({ ...newAppointment, service: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o serviço" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {services.map((service) => (
-                          <SelectItem key={service} value={service}>
-                            {service}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="date">Data</Label>
-                    <Input
-                      id="date"
-                      required
-                      type="datetime-local"
-                      value={newAppointment.date}
-                      onChange={(e) => setNewAppointment({ ...newAppointment, date: e.target.value })}
-                    />
-                  </div>
-                  <Button type="submit" className="w-full bg-[#009EE3] hover:bg-[#0080B7]">Agendar</Button>
-                </form>
-              </DialogContent>
-            </Dialog>
-          </div>
-
-          {/* Error Alert */}
-          {error && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-
-          {/* Filters */}
-          <div className="flex flex-wrap gap-4">
-            <div className="w-full md:w-auto">
-              <Label>Profissional</Label>
-              <Select value={professionalFilter} onValueChange={setProfessionalFilter}>
-                <SelectTrigger className="w-full md:w-[200px]">
-                  <SelectValue placeholder="Filtrar por profissional" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  {professionals.map((prof) => (
-                    <SelectItem key={prof} value={prof}>{prof}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+    <div className="flex h-screen bg-gray-50">
+      <Sidebar />
+      <main className="flex-1 overflow-y-auto">
+        <div className="space-y-6 p-6">
+          <div className="max-w-7xl mx-auto">
+            {/* Header */}
+            <div className="flex justify-between items-center mb-8">
+              <h1 className="text-2xl font-bold text-gray-900">Gestão de Agendamentos</h1>
+              <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+                <DialogTrigger asChild>
+                  <Button className="bg-[#009EE3] hover:bg-[#0080B7]">
+                    <Plus className="mr-2 h-4 w-4" /> Novo Agendamento
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Novo Agendamento</DialogTitle>
+                  </DialogHeader>
+                  <form onSubmit={addAppointment} className="space-y-4">
+                    <div>
+                      <Label htmlFor="patient">Paciente</Label>
+                      <Input
+                        id="patient"
+                        required
+                        value={newAppointment.patient}
+                        onChange={(e) => setNewAppointment({ ...newAppointment, patient: e.target.value })}
+                        placeholder="Nome do paciente"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="professional">Profissional</Label>
+                      <Input
+                        id="professional"
+                        required
+                        value={newAppointment.professional}
+                        onChange={(e) => setNewAppointment({ ...newAppointment, professional: e.target.value })}
+                        placeholder="Nome do profissional"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="service">Serviço</Label>
+                      <Select
+                        required
+                        value={newAppointment.service}
+                        onValueChange={(value) => setNewAppointment({ ...newAppointment, service: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o serviço" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {services.map((service) => (
+                            <SelectItem key={service} value={service}>
+                              {service}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="date">Data</Label>
+                      <Input
+                        id="date"
+                        required
+                        type="datetime-local"
+                        value={newAppointment.date}
+                        onChange={(e) => setNewAppointment({ ...newAppointment, date: e.target.value })}
+                      />
+                    </div>
+                    <Button type="submit" className="w-full bg-[#009EE3] hover:bg-[#0080B7]">Agendar</Button>
+                  </form>
+                </DialogContent>
+              </Dialog>
             </div>
-            <div className="w-full md:w-auto">
-              <Label>Período</Label>
-              <div className="flex gap-2">
-                <Input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full md:w-auto"
-                />
-                <Input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full md:w-auto"
-                />
+
+            {/* Error Alert */}
+            {error && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            {/* Filters */}
+            <div className="flex flex-wrap gap-4 mb-6">
+              <div className="w-full md:w-auto">
+                <Label>Profissional</Label>
+                <Select value={professionalFilter} onValueChange={setProfessionalFilter}>
+                  <SelectTrigger className="w-full md:w-[200px]">
+                    <SelectValue placeholder="Filtrar por profissional" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    {professionals.map((prof) => (
+                      <SelectItem key={prof} value={prof}>{prof}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="w-full md:w-auto">
+                <Label>Período</Label>
+                <div className="flex gap-2">
+                  <Input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="w-full md:w-auto"
+                  />
+                  <Input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="w-full md:w-auto"
+                  />
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Tabs and Content */}
-          <Tabs defaultValue="all" value={currentTab} onValueChange={setCurrentTab}>
-            <TabsList>
-              <TabsTrigger value="all">Todos</TabsTrigger>
-              <TabsTrigger value="Pending">Pendentes</TabsTrigger>
-              <TabsTrigger value="Confirmed">Confirmados</TabsTrigger>
-              <TabsTrigger value="Canceled">Cancelados</TabsTrigger>
-            </TabsList>
+            {/* Tabs and Content */}
+            <Tabs defaultValue="all" value={currentTab} onValueChange={setCurrentTab}>
+              <TabsList>
+                <TabsTrigger value="all">Todos</TabsTrigger>
+                <TabsTrigger value="Pending">Pendentes</TabsTrigger>
+                <TabsTrigger value="Confirmed">Confirmados</TabsTrigger>
+                <TabsTrigger value="Canceled">Cancelados</TabsTrigger>
+              </TabsList>
 
-            <TabsContent value="all" className="mt-6">
-              <AppointmentsList
-                appointments={filteredAppointments}
-                onStatusChange={updateStatus}
-                onDelete={handleDeleteClick}
-              />
-            </TabsContent>
-            {["Pending", "Confirmed", "Canceled"].map((status) => (
-              <TabsContent key={status} value={status} className="mt-6">
+              <TabsContent value="all" className="mt-6">
                 <AppointmentsList
                   appointments={filteredAppointments}
                   onStatusChange={updateStatus}
                   onDelete={handleDeleteClick}
                 />
               </TabsContent>
-            ))}
-          </Tabs>
+              {["Pending", "Confirmed", "Canceled"].map((status) => (
+                <TabsContent key={status} value={status} className="mt-6">
+                  <AppointmentsList
+                    appointments={filteredAppointments}
+                    onStatusChange={updateStatus}
+                    onDelete={handleDeleteClick}
+                  />
+                </TabsContent>
+              ))}
+            </Tabs>
+          </div>
         </div>
-      </div>
+      </main>
 
       {/* Chat Button */}
       <Button
@@ -377,7 +376,8 @@ function AppointmentsList({ appointments, onStatusChange, onDelete }) {
                   </Badge>
                   <Badge variant="outline">
                     <Tag className="h-3 w-3 mr-1" />
-                    {appointment.service}</Badge>
+                    {appointment.service}
+                  </Badge>
                   <Badge className={getStatusColor(appointment.status)}>
                     {appointment.status}
                   </Badge>
