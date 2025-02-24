@@ -7,60 +7,83 @@ import { Alert, AlertTitle } from '@/components/ui/alert';
 import { Calendar, Clock, User, Heart, Pill, AlertTriangle } from 'lucide-react';
 import Sidebar from "@/components/Sidebar";
 
-export default function PatientPage({ params }) {
+export default function PatientPage() {
+  const { tenant, id } = useParams();
   const [patient, setPatient] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const { tenant } = useParams();
 
   useEffect(() => {
-    fetchPatientDetails();
-  }, []);
+    if (tenant && id) {
+      fetchPatientDetails();
+    }
+  }, [tenant, id]);
 
   const fetchPatientDetails = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/${tenant}/patients/${params.id}`);
-      if (!response.ok) throw new Error('Failed to fetch patient details');
+      const response = await fetch(`/api/${tenant}/patients/${id}`);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch patient details: ${response.statusText}`);
+      }
+      
       const data = await response.json();
+      
+      if (!data || typeof data !== 'object') {
+        throw new Error('Invalid patient data received');
+      }
+      
       setPatient(data);
     } catch (err) {
+      console.error('Error fetching patient:', err);
       setError(err.message);
     } finally {
       setLoading(false);
     }
   };
 
+  // Helper function to handle both string and array content
+  const formatContent = (content) => {
+    if (Array.isArray(content)) {
+      return content;
+    }
+    if (typeof content === 'string' && content.trim()) {
+      return [content];
+    }
+    return [];
+  };
+
   const sections = [
     {
       title: 'Clinical History',
       icon: Heart,
-      content: patient?.clinicalHistory || []
+      content: formatContent(patient?.medicalDetails?.clinicalHistory)
     },
     {
       title: 'Surgical History',
       icon: User,
-      content: patient?.surgicalHistory || []
+      content: formatContent(patient?.medicalDetails?.surgicalHistory)
     },
     {
       title: 'Family History',
       icon: User,
-      content: patient?.familyHistory || []
+      content: formatContent(patient?.medicalDetails?.familyHistory)
     },
     {
       title: 'Habits',
       icon: User,
-      content: patient?.habits || []
+      content: formatContent(patient?.medicalDetails?.habits)
     },
     {
       title: 'Allergies',
       icon: AlertTriangle,
-      content: patient?.allergies || []
+      content: formatContent(patient?.medicalDetails?.allergies)
     },
     {
       title: 'Current Medications',
       icon: Pill,
-      content: patient?.medications || []
+      content: formatContent(patient?.medicalDetails?.medications)
     }
   ];
 
@@ -73,7 +96,7 @@ export default function PatientPage({ params }) {
   const renderError = () => (
     <Alert variant="destructive">
       <AlertTitle>Error loading patient details</AlertTitle>
-      {error}
+      <p className="mt-2 text-sm">{error}</p>
     </Alert>
   );
 
@@ -85,9 +108,9 @@ export default function PatientPage({ params }) {
       <div>
         <h1 className="text-xl font-medium">Patient Details</h1>
         <div className="text-gray-600">
-          <p>Email: {patient?.email}</p>
-          <p>Created: {patient?.createdAt && new Date(patient.createdAt).toLocaleDateString()}</p>
-          <p>Last Login: {patient?.lastLoginAt && new Date(patient.lastLoginAt).toLocaleDateString()}</p>
+          <p>Email: {patient?.email || 'N/A'}</p>
+          <p>Created: {patient?.createdAt ? new Date(patient.createdAt).toLocaleDateString() : 'N/A'}</p>
+          <p>Last Login: {patient?.lastLoginAt ? new Date(patient.lastLoginAt).toLocaleDateString() : 'N/A'}</p>
         </div>
       </div>
     </div>
@@ -105,12 +128,14 @@ export default function PatientPage({ params }) {
           </CardHeader>
           <CardContent>
             <div className="text-gray-600 text-sm">
-              {content.length === 0 ? (
-                <div>No information available</div>
-              ) : (
+              {content.length > 0 ? (
                 content.map((item, idx) => (
-                  <div key={idx}>{item}</div>
+                  <div key={idx} className="mb-1 last:mb-0">
+                    {item}
+                  </div>
                 ))
+              ) : (
+                <div>No information available</div>
               )}
             </div>
           </CardContent>
@@ -119,52 +144,53 @@ export default function PatientPage({ params }) {
     </div>
   );
 
-  const renderDiagnoses = () => (
-    <Card className="bg-white">
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-base font-medium">Latest Diagnoses</CardTitle>
-
-      </CardHeader>
-      <CardContent>
-        {patient?.lastDiagnoses?.length > 0 ? (
-          patient.lastDiagnoses.map((diagnosis, index) => (
-            <div key={index} className="mb-4 last:mb-0">
-              <div className="flex items-center mb-2">
-                <div className="bg-blue-500 text-white rounded p-2 mr-4">
-                  <div className="text-center">
-                    <div className="text-sm">{new Date(diagnosis.date).getDate()}</div>
-                    <div className="text-xs">{new Date(diagnosis.date).toLocaleString('default', { month: 'short' }).toUpperCase()}</div>
-                    <div className="text-xs">{new Date(diagnosis.date).getFullYear()}</div>
+  const renderDiagnoses = () => {
+    const diagnoses = patient?.medicalDetails?.lastDiagnosis ? [patient.medicalDetails.lastDiagnosis] : [];
+    
+    return (
+      <Card className="bg-white">
+        <CardHeader>
+          <CardTitle className="text-base font-medium">Latest Diagnoses</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {diagnoses.length > 0 ? (
+            diagnoses.map((diagnosis, index) => (
+              <div key={index} className="mb-4 last:mb-0">
+                <div className="flex items-center mb-2">
+                  <div className="bg-blue-500 text-white rounded p-2 mr-4">
+                    <div className="text-center">
+                      <div className="text-sm">
+                        {new Date(diagnosis.date).getDate()}
+                      </div>
+                      <div className="text-xs">
+                        {new Date(diagnosis.date).toLocaleString('default', { month: 'short' }).toUpperCase()}
+                      </div>
+                      <div className="text-xs">
+                        {new Date(diagnosis.date).getFullYear()}
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="font-medium">
+                      {diagnosis.diagnosis || 'No diagnosis title'}
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      {new Date(diagnosis.date).toLocaleTimeString()}
+                    </div>
                   </div>
                 </div>
-                <div>
-                  <div className="font-medium">Diagnosis: {diagnosis.diagnosis}</div>
-                  <div className="text-sm text-gray-500">{new Date(diagnosis.date).toLocaleTimeString()}</div>
-                </div>
+                {diagnosis.notes && (
+                  <div className="ml-16">
+                    <p className="text-gray-600">{diagnosis.notes}</p>
+                  </div>
+                )}
               </div>
-              <div className="ml-16">
-                <p className="text-gray-600">{diagnosis.notes}</p>
-              </div>
-            </div>
-          ))
-        ) : (
-          <p className="text-gray-500">No diagnoses recorded</p>
-        )}
-      </CardContent>
-    </Card>
-  );
-
-  const renderContent = () => {
-    if (loading) return renderLoadingState();
-    if (error) return renderError();
-    if (!patient) return <Alert><AlertTitle>Patient not found</AlertTitle></Alert>;
-
-    return (
-      <>
-        {renderPatientHeader()}
-        {renderMedicalSections()}
-        {renderDiagnoses()}
-      </>
+            ))
+          ) : (
+            <p className="text-gray-500">No diagnoses recorded</p>
+          )}
+        </CardContent>
+      </Card>
     );
   };
 
@@ -174,7 +200,19 @@ export default function PatientPage({ params }) {
       <main className="flex-1 overflow-y-auto">
         <div className="container mx-auto p-6">
           <div className="max-w-6xl mx-auto">
-            {renderContent()}
+            {loading ? (
+              renderLoadingState()
+            ) : error ? (
+              renderError()
+            ) : !patient ? (
+              <Alert><AlertTitle>Patient not found</AlertTitle></Alert>
+            ) : (
+              <>
+                {renderPatientHeader()}
+                {renderMedicalSections()}
+                {renderDiagnoses()}
+              </>
+            )}
           </div>
         </div>
       </main>
