@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import { getUserModel } from '@/lib/models/User';
-import { getPatientDetailsModel } from '@/lib/models/PatientDetails';
 
 export async function GET(request, { params }) {
   try {
@@ -16,49 +15,26 @@ export async function GET(request, { params }) {
     // Connect to the tenant's specific database
     const connection = await connectDB(tenant);
     const User = getUserModel(connection);
-    const PatientDetails = getPatientDetailsModel(connection);
 
-    // Find user and details with tenant-specific paths
+    // Find user with tenant-specific path and role='user'
     const user = await User.findOne({
       _id: userId,
-      tenantPath: tenant
+      tenantPath: tenant,
+      role: 'user'
     }).select('-password');
 
     if (!user) {
       return NextResponse.json(
-        { error: 'Paciente não encontrado' },
+        { error: 'Patient not found' },
         { status: 404 }
       );
     }
 
-    const details = await PatientDetails.findOne({
-      userId: userId,
-      tenantPath: tenant
-    });
-
-    // Combine user data with patient details
-    const patientData = {
-      ...user.toObject(),
-      ...(details ? details.toObject() : {
-        clinicalHistory: '',
-        surgicalHistory: '',
-        familyHistory: '',
-        habits: '',
-        allergies: '',
-        medications: '',
-        lastDiagnosis: {
-          date: new Date(),
-          diagnosis: '',
-          notes: ''
-        }
-      })
-    };
-
-    return NextResponse.json(patientData);
+    return NextResponse.json(user);
   } catch (error) {
-    console.error('Error in GET /api/[tenant]/patients/[id]:', error);
+    console.error('Error in GET /api/[tenant]/users/[id]:', error);
     return NextResponse.json(
-      { error: 'Falha ao buscar detalhes do paciente' },
+      { error: 'Failed to fetch user details' },
       { status: 500 }
     );
   }
@@ -76,43 +52,52 @@ export async function PUT(request, { params }) {
 
     // Connect to the tenant's specific database
     const connection = await connectDB(tenant);
-    const PatientDetails = getPatientDetailsModel(connection);
+    const User = getUserModel(connection);
 
     const body = await request.json();
 
-    // Update patient details with tenant path
-    const details = await PatientDetails.findOneAndUpdate(
+    // Update user medical details
+    const updatedUser = await User.findOneAndUpdate(
       { 
-        userId: userId,
-        tenantPath: tenant 
+        _id: userId,
+        tenantPath: tenant,
+        role: 'user'
       },
       { 
         $set: {
-          tenantPath: tenant, // Ensure tenantPath is set
-          clinicalHistory: body.clinicalHistory,
-          surgicalHistory: body.surgicalHistory,
-          familyHistory: body.familyHistory,
-          habits: body.habits,
-          allergies: body.allergies,
-          medications: body.medications,
-          lastDiagnosis: body.lastDiagnosis || {
-            date: new Date(),
-            diagnosis: '',
-            notes: ''
+          medicalDetails: {
+            clinicalHistory: body.clinicalHistory,
+            surgicalHistory: body.surgicalHistory,
+            familyHistory: body.familyHistory,
+            habits: body.habits,
+            allergies: body.allergies,
+            medications: body.medications,
+            lastDiagnosis: body.lastDiagnosis || {
+              date: new Date(),
+              diagnosis: '',
+              notes: ''
+            }
           }
         }
       },
       { 
         new: true,
-        upsert: true
+        runValidators: true
       }
-    );
+    ).select('-password');
 
-    return NextResponse.json(details);
+    if (!updatedUser) {
+      return NextResponse.json(
+        { error: 'Patient not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(updatedUser);
   } catch (error) {
-    console.error('Error in PUT /api/[tenant]/patients/[id]:', error);
+    console.error('Error in PUT /api/[tenant]/users/[id]:', error);
     return NextResponse.json(
-      { error: 'Falha ao atualizar detalhes do paciente' },
+      { error: 'Failed to update user details' },
       { status: 500 }
     );
   }

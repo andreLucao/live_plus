@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
-import { getPatientDetailsModel } from '@/lib/models/PatientDetails';
+import { getUserModel } from '@/lib/models/User';
 
+// GET all users with role='user'
 export async function GET(request, { params }) {
   try {
     const id = await params;
@@ -13,17 +14,22 @@ export async function GET(request, { params }) {
 
     // Connect to the database
     const connection = await connectDB(tenant);
-    const PatientDetails = getPatientDetailsModel(connection);
+    const User = getUserModel(connection);
 
-    // Query patient details for the specific tenant
-    const patientDetails = await PatientDetails.find({ tenantPath: tenant })
-      .sort({ createdAt: -1 });
+    // Query users for the specific tenant with role='user'
+    const users = await User.find({ 
+      tenantPath: tenant,
+      role: 'user',
+      status: { $ne: 'Archived' } // Optionally exclude archived users
+    })
+    .select('-password') // Exclude password field
+    .sort({ createdAt: -1 });
 
-    return NextResponse.json(patientDetails);
+    return NextResponse.json(users);
   } catch (error) {
-    console.error('Error in GET /api/[tenant]/patient-details:', error);
+    console.error('Error in GET /api/[tenant]/users:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch patient details' },
+      { error: 'Failed to fetch users' },
       { status: 500 }
     );
   }

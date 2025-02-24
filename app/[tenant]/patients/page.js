@@ -38,7 +38,7 @@ export default function PatientsPage() {
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {patients.map(patient => (
-          <Link key={patient._id} href={`/patient/${patient._id}`}>
+          <Link key={patient._id} href={`/${tenant}/patient/${patient._id}`}>
             <Card className="hover:shadow-lg transition-shadow cursor-pointer">
               <CardHeader>
                 <CardTitle className="text-lg truncate">{patient.email}</CardTitle>
