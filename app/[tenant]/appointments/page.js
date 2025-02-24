@@ -23,7 +23,7 @@ import Sidebar from "@/components/Sidebar"
 export default function AppointmentManager() {
   const [appointments, setAppointments] = useState([])
   const [newAppointment, setNewAppointment] = useState({
-    status: "Pending",
+    status: "Pending", // Mantemos o valor interno em inglês
     date: "",
     professional: "",
     patient: "",
@@ -351,6 +351,15 @@ function AppointmentsList({ appointments, onStatusChange, onDelete }) {
     }
   }
 
+  const getStatusText = (status) => {
+    switch (status) {
+      case 'Pending': return 'Pendente'
+      case 'Confirmed': return 'Confirmado'
+      case 'Canceled': return 'Cancelado'
+      default: return status
+    }
+  }
+
   return (
     <Card>
       <CardContent className="p-6">
@@ -374,12 +383,11 @@ function AppointmentsList({ appointments, onStatusChange, onDelete }) {
                     <User className="h-3 w-3 mr-1" />
                     {appointment.professional}
                   </Badge>
-                  <Badge variant="outline">
-                    <Tag className="h-3 w-3 mr-1" />
+                  <Badge variant="outline"><Tag className="h-3 w-3 mr-1" />
                     {appointment.service}
                   </Badge>
                   <Badge className={getStatusColor(appointment.status)}>
-                    {appointment.status}
+                    {getStatusText(appointment.status)}
                   </Badge>
                 </div>
               </div>
