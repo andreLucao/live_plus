@@ -27,6 +27,9 @@ import {
 import Sidebar from "@/components/Sidebar";
 import Link from "next/link";
 
+
+
+
 export default function PatientsPage() {
   // States for patients and UI controls
   const [patients, setPatients] = useState([]);
@@ -38,6 +41,7 @@ export default function PatientsPage() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const { tenant } = useParams();
+  const variavel = 1
 
   // Effect for loading patients
   useEffect(() => {
