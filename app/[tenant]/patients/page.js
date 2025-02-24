@@ -41,7 +41,6 @@ export default function PatientsPage() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const { tenant } = useParams();
-  const variavel = 1
 
   // Effect for loading patients
   useEffect(() => {
