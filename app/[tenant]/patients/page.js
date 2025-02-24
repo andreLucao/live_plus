@@ -106,8 +106,8 @@ export default function PatientsPage() {
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
       <Sidebar />
       <main className="flex-1 overflow-y-auto">
-        <div className="space-y-6 p-6">
-          <div className="max-w-7xl mx-auto">
+        <div className="h-full p-6">
+          <div className="h-full">
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
               <div className="flex flex-col">
@@ -181,16 +181,16 @@ export default function PatientsPage() {
             </div>
 
             {/* Patients List */}
-            <Card>
+            <Card className="h-[calc(100vh-230px)]">
               <CardHeader>
                 <CardTitle>Lista de Pacientes</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <CardContent className="h-[calc(100%-5rem)] overflow-y-auto">
+                <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-1 gap-4 auto-rows-fr">
                   {filteredPatients.map(patient => (
                     <Link key={patient._id} href={`/${tenant}/patient/${patient._id}`}>
-                      <Card className="hover:shadow-lg transition-shadow cursor-pointer bg-white dark:bg-gray-800">
-                        <CardContent className="pt-6">
+                      <Card className="hover:shadow-lg transition-shadow cursor-pointer bg-white dark:bg-gray-800 h-full">
+                        <CardContent className="pt-6 h-full">
                           <div className="space-y-4">
                             <div className="flex items-center gap-2">
                               <Mail className="h-4 w-4 text-gray-500 dark:text-gray-400" />
