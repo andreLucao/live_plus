@@ -5,7 +5,9 @@ import mongoose from 'mongoose';
 // GET endpoint to retrieve a specific document
 export async function GET(request, { params }) {
   try {
-    const { tenant, id, documentId } = params;
+    // Await params before destructuring
+    const paramsObj = await params;
+    const { tenant, id, documentId } = paramsObj;
     
     // Validate ID formats
     if (!mongoose.Types.ObjectId.isValid(id) || !mongoose.Types.ObjectId.isValid(documentId)) {
@@ -39,7 +41,9 @@ export async function GET(request, { params }) {
 // DELETE endpoint to remove a document
 export async function DELETE(request, { params }) {
   try {
-    const { tenant, id, documentId } = params;
+    // Await params before destructuring
+    const paramsObj = await params;
+    const { tenant, id, documentId } = paramsObj;
     
     // Validate ID formats
     if (!mongoose.Types.ObjectId.isValid(id) || !mongoose.Types.ObjectId.isValid(documentId)) {

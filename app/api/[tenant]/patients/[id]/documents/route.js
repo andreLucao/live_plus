@@ -14,7 +14,9 @@ async function streamToBuffer(stream) {
 // GET endpoint to retrieve all documents for a patient
 export async function GET(request, { params }) {
   try {
-    const { tenant, id } = params;
+    // Await params before destructuring
+    const paramsObj = await params;
+    const { tenant, id } = paramsObj;
     
     // Validate ID format
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -40,7 +42,9 @@ export async function GET(request, { params }) {
 // POST endpoint to upload a new document
 export async function POST(request, { params }) {
   try {
-    const { tenant, id } = params;
+    // Await params before destructuring
+    const paramsObj = await params;
+    const { tenant, id } = paramsObj;
     
     // Validate ID format
     if (!mongoose.Types.ObjectId.isValid(id)) {
