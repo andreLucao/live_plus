@@ -371,10 +371,10 @@ export default function PaginaPaciente() {
   const renderMedicalSections = () => (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
       {sections.map(({ title, icon: Icon, field, content }) => (
-        <Card key={title} className="bg-white">
+        <Card key={title} className="bg-white dark:bg-gray-800">
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-medium flex items-center space-x-2">
-              <Icon className="w-4 h-4" />
+              <Icon className="w-4 h-4 text-[#009EE3]" />
               <span>{title}</span>
             </CardTitle>
           </CardHeader>
@@ -387,7 +387,7 @@ export default function PaginaPaciente() {
                 className="w-full"
               />
             ) : (
-              <div className="text-gray-600 text-sm">
+              <div className="text-gray-600 dark:text-gray-400 text-sm">
                 {content.length > 0 ? (
                   content.map((item, idx) => (
                     <div key={idx} className="mb-1 last:mb-0">
@@ -409,7 +409,7 @@ export default function PaginaPaciente() {
     const diagnoses = patient?.medicalDetails?.lastDiagnosis ? [patient.medicalDetails.lastDiagnosis] : [];
     
     return (
-      <Card className="bg-white">
+      <Card className="bg-white dark:bg-gray-800">
         <CardHeader>
           <CardTitle className="text-base font-medium">Últimos Diagnósticos</CardTitle>
         </CardHeader>
@@ -417,7 +417,7 @@ export default function PaginaPaciente() {
           {editMode ? (
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Data</label>
+                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Data</label>
                 <Input
                   type="date"
                   value={formData.lastDiagnosis.date}
@@ -425,7 +425,7 @@ export default function PaginaPaciente() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Diagnóstico</label>
+                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Diagnóstico</label>
                 <Input
                   value={formData.lastDiagnosis.diagnosis}
                   onChange={(e) => handleDiagnosisChange('diagnosis', e.target.value)}
@@ -433,7 +433,7 @@ export default function PaginaPaciente() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Observações</label>
+                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Observações</label>
                 <Textarea
                   value={formData.lastDiagnosis.notes}
                   onChange={(e) => handleDiagnosisChange('notes', e.target.value)}
@@ -447,7 +447,7 @@ export default function PaginaPaciente() {
               diagnoses.map((diagnosis, index) => (
                 <div key={index} className="mb-4 last:mb-0">
                   <div className="flex items-center mb-2">
-                    <div className="bg-blue-500 text-white rounded p-2 mr-4">
+                    <div className="bg-[#009EE3] text-white rounded p-2 mr-4">
                       <div className="text-center">
                         <div className="text-sm">
                           {new Date(diagnosis.date).getDate()}
@@ -461,23 +461,23 @@ export default function PaginaPaciente() {
                       </div>
                     </div>
                     <div>
-                      <div className="font-medium">
+                      <div className="font-medium dark:text-gray-200">
                         {diagnosis.diagnosis || 'Sem título de diagnóstico'}
                       </div>
-                      <div className="text-sm text-gray-500">
+                      <div className="text-sm text-gray-500 dark:text-gray-400">
                         {new Date(diagnosis.date).toLocaleTimeString()}
                       </div>
                     </div>
                   </div>
                   {diagnosis.notes && (
                     <div className="ml-16">
-                      <p className="text-gray-600">{diagnosis.notes}</p>
+                      <p className="text-gray-600 dark:text-gray-400">{diagnosis.notes}</p>
                     </div>
                   )}
                 </div>
               ))
             ) : (
-              <p className="text-gray-500">Nenhum diagnóstico registrado</p>
+              <p className="text-gray-500 dark:text-gray-400 text-center py-4">Nenhum diagnóstico registrado</p>
             )
           )}
         </CardContent>
@@ -486,12 +486,12 @@ export default function PaginaPaciente() {
   };
 
   const renderDocuments = () => (
-    <Card className="bg-white">
+    <Card className="bg-white dark:bg-gray-800">
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-base font-medium">Documentos do Paciente</CardTitle>
         <Dialog open={documentDialogOpen} onOpenChange={setDocumentDialogOpen}>
           <DialogTrigger asChild>
-            <Button size="sm">
+            <Button size="sm" className="bg-[#009EE3] hover:bg-[#0080B7] text-white">
               <Upload className="h-4 w-4 mr-1" /> Enviar Documento
             </Button>
           </DialogTrigger>
@@ -539,6 +539,7 @@ export default function PaginaPaciente() {
                 <Button 
                   type="submit" 
                   disabled={uploadingDocument || !selectedFile}
+                  className="bg-[#009EE3] hover:bg-[#0080B7] text-white"
                 >
                   {uploadingDocument ? (
                     <div className="flex items-center">
@@ -560,13 +561,13 @@ export default function PaginaPaciente() {
         {documents.length > 0 ? (
           <div className="space-y-2">
             {documents.map((doc) => (
-              <div key={doc._id} className="flex items-center justify-between p-2 border rounded hover:bg-gray-50">
+              <div key={doc._id} className="flex items-center justify-between p-2 border rounded hover:bg-gray-50 dark:hover:bg-gray-700 dark:border-gray-700">
                 <div className="flex items-center space-x-3">
-                  <File className="h-5 w-5 text-blue-500" />
+                  <File className="h-5 w-5 text-[#009EE3]" />
                   <div>
-                    <div className="font-medium">{doc.name}</div>
-                    {doc.description && <div className="text-sm text-gray-500">{doc.description}</div>}
-                    <div className="text-xs text-gray-400">
+                    <div className="font-medium dark:text-gray-200">{doc.name}</div>
+                    {doc.description && <div className="text-sm text-gray-500 dark:text-gray-400">{doc.description}</div>}
+                    <div className="text-xs text-gray-400 dark:text-gray-500">
                       {new Date(doc.uploadedAt).toLocaleDateString()} • {(doc.size / 1024).toFixed(1)} KB
                     </div>
                   </div>
@@ -577,7 +578,7 @@ export default function PaginaPaciente() {
                     size="sm" 
                     onClick={() => handleDownloadDocument(doc._id, doc.name)}
                   >
-                    <Download className="h-4 w-4" />
+                    <Download className="h-4 w-4 text-[#009EE3]" />
                   </Button>
                   <Button 
                     variant="ghost" 
@@ -596,19 +597,19 @@ export default function PaginaPaciente() {
             ))}
           </div>
         ) : (
-          <p className="text-gray-500 text-center py-4">Nenhum documento enviado ainda</p>
+          <p className="text-gray-500 dark:text-gray-400 text-center py-4">Nenhum documento enviado ainda</p>
         )}
       </CardContent>
     </Card>
   );
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
       <Sidebar />
       <Toaster />
       <main className="flex-1 overflow-y-auto">
-        <div className="container mx-auto p-6">
-          <div className="max-w-6xl mx-auto">
+        <div className="space-y-6 p-6">
+          <div className="max-w-7xl mx-auto">
             {loading ? (
               renderLoadingState()
             ) : error ? (
@@ -619,12 +620,12 @@ export default function PaginaPaciente() {
               <>
                 <div className="flex justify-between items-start mb-6">
                   <div className="flex items-start space-x-4">
-                    <div className="bg-gray-400 rounded-full w-16 h-16 flex items-center justify-center text-white text-2xl">
+                    <div className="bg-[#009EE3] rounded-full w-16 h-16 flex items-center justify-center text-white text-2xl">
                       {patient?.email?.charAt(0).toUpperCase() || 'P'}
                     </div>
                     <div>
-                      <h1 className="text-xl font-medium">Detalhes do Paciente</h1>
-                      <div className="text-gray-600">
+                      <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Detalhes do Paciente</h1>
+                      <div className="text-gray-600 dark:text-gray-300">
                         <p>Email: {patient?.email || 'N/A'}</p>
                         <p>Criado: {patient?.createdAt ? new Date(patient.createdAt).toLocaleDateString() : 'N/A'}</p>
                         <p>Último Login: {patient?.lastLoginAt ? new Date(patient.lastLoginAt).toLocaleDateString() : 'N/A'}</p>
@@ -646,6 +647,7 @@ export default function PaginaPaciente() {
                           size="sm" 
                           onClick={handleSave}
                           disabled={saving}
+                          className="bg-[#009EE3] hover:bg-[#0080B7] text-white"
                         >
                           {saving ? (
                             <div className="flex items-center">
