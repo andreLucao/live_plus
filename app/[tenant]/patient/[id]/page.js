@@ -4,13 +4,15 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertTitle } from '@/components/ui/alert';
-import { Calendar, Clock, User, Heart, Pill, AlertTriangle, Edit, X, Check, Download } from 'lucide-react';
+import { Calendar, Clock, User, Heart, Pill, AlertTriangle, Edit, X, Check, Download, Upload, File, Trash2 } from 'lucide-react';
 import Sidebar from "@/components/Sidebar";
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { Toaster } from '@/components/ui/sonner';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 
 export default function PatientPage() {
   const { tenant, id } = useParams();
@@ -33,10 +35,18 @@ export default function PatientPage() {
   });
   const [saving, setSaving] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [documents, setDocuments] = useState([]);
+  const [uploadingDocument, setUploadingDocument] = useState(false);
+  const [documentName, setDocumentName] = useState('');
+  const [documentDescription, setDocumentDescription] = useState('');
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [documentDialogOpen, setDocumentDialogOpen] = useState(false);
+  const [deletingDocumentId, setDeletingDocumentId] = useState(null);
 
   useEffect(() => {
     if (tenant && id) {
       fetchPatientDetails();
+      fetchPatientDocuments();
     }
   }, [tenant, id]);
 
@@ -81,6 +91,22 @@ export default function PatientPage() {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchPatientDocuments = async () => {
+    try {
+      const response = await fetch(`/api/${tenant}/patients/${id}/documents`);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch patient documents: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      setDocuments(data);
+    } catch (err) {
+      console.error('Error fetching patient documents:', err);
+      toast.error(`Failed to fetch documents: ${err.message}`);
     }
   };
 
@@ -165,6 +191,117 @@ export default function PatientPage() {
       toast.error(`Failed to download PDF: ${err.message}`);
     } finally {
       setDownloading(false);
+    }
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setSelectedFile(file);
+      // Use the file name as default document name if not set
+      if (!documentName) {
+        setDocumentName(file.name);
+      }
+    }
+  };
+
+  const handleUploadDocument = async (e) => {
+    e.preventDefault();
+    
+    if (!selectedFile) {
+      toast.error('Please select a file to upload');
+      return;
+    }
+    
+    try {
+      setUploadingDocument(true);
+      
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('name', documentName || selectedFile.name);
+      formData.append('description', documentDescription);
+      
+      const response = await fetch(`/api/${tenant}/patients/${id}/documents`, {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to upload document: ${response.statusText}`);
+      }
+      
+      // Reset form
+      setSelectedFile(null);
+      setDocumentName('');
+      setDocumentDescription('');
+      setDocumentDialogOpen(false);
+      
+      // Refresh documents list
+      await fetchPatientDocuments();
+      
+      toast.success('Document uploaded successfully');
+    } catch (err) {
+      console.error('Error uploading document:', err);
+      toast.error(`Failed to upload document: ${err.message}`);
+    } finally {
+      setUploadingDocument(false);
+    }
+  };
+
+  const handleDownloadDocument = async (documentId, documentName) => {
+    try {
+      const response = await fetch(`/api/${tenant}/patients/${id}/documents/${documentId}`);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to download document: ${response.statusText}`);
+      }
+      
+      // Get the document blob
+      const blob = await response.blob();
+      
+      // Create a download link
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = documentName;
+      
+      // Trigger the download
+      document.body.appendChild(a);
+      a.click();
+      
+      // Clean up
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      toast.success("Document downloaded successfully");
+    } catch (err) {
+      console.error('Error downloading document:', err);
+      toast.error(`Failed to download document: ${err.message}`);
+    }
+  };
+
+  const handleDeleteDocument = async (documentId) => {
+    try {
+      setDeletingDocumentId(documentId);
+      
+      const response = await fetch(`/api/${tenant}/patients/${id}/documents/${documentId}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to delete document: ${response.statusText}`);
+      }
+      
+      // Refresh documents list
+      await fetchPatientDocuments();
+      
+      toast.success('Document deleted successfully');
+    } catch (err) {
+      console.error('Error deleting document:', err);
+      toast.error(`Failed to delete document: ${err.message}`);
+    } finally {
+      setDeletingDocumentId(null);
     }
   };
 
@@ -348,6 +485,123 @@ export default function PatientPage() {
     );
   };
 
+  const renderDocuments = () => (
+    <Card className="bg-white">
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle className="text-base font-medium">Patient Documents</CardTitle>
+        <Dialog open={documentDialogOpen} onOpenChange={setDocumentDialogOpen}>
+          <DialogTrigger asChild>
+            <Button size="sm">
+              <Upload className="h-4 w-4 mr-1" /> Upload Document
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Upload Document</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleUploadDocument} className="space-y-4">
+              <div>
+                <Label htmlFor="file">Select File</Label>
+                <Input 
+                  id="file" 
+                  type="file" 
+                  onChange={handleFileChange} 
+                  required 
+                />
+              </div>
+              <div>
+                <Label htmlFor="documentName">Document Name</Label>
+                <Input 
+                  id="documentName" 
+                  value={documentName} 
+                  onChange={(e) => setDocumentName(e.target.value)} 
+                  placeholder="Enter document name" 
+                />
+              </div>
+              <div>
+                <Label htmlFor="documentDescription">Description (Optional)</Label>
+                <Textarea 
+                  id="documentDescription" 
+                  value={documentDescription} 
+                  onChange={(e) => setDocumentDescription(e.target.value)} 
+                  placeholder="Enter document description" 
+                  rows={3} 
+                />
+              </div>
+              <div className="flex justify-end space-x-2">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setDocumentDialogOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={uploadingDocument || !selectedFile}
+                >
+                  {uploadingDocument ? (
+                    <div className="flex items-center">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Uploading...
+                    </div>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4 mr-1" /> Upload
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </CardHeader>
+      <CardContent>
+        {documents.length > 0 ? (
+          <div className="space-y-2">
+            {documents.map((doc) => (
+              <div key={doc._id} className="flex items-center justify-between p-2 border rounded hover:bg-gray-50">
+                <div className="flex items-center space-x-3">
+                  <File className="h-5 w-5 text-blue-500" />
+                  <div>
+                    <div className="font-medium">{doc.name}</div>
+                    {doc.description && <div className="text-sm text-gray-500">{doc.description}</div>}
+                    <div className="text-xs text-gray-400">
+                      {new Date(doc.uploadedAt).toLocaleDateString()} • {(doc.size / 1024).toFixed(1)} KB
+                    </div>
+                  </div>
+                </div>
+                <div className="flex space-x-2">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => handleDownloadDocument(doc._id, doc.name)}
+                  >
+                    <Download className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => handleDeleteDocument(doc._id)}
+                    disabled={deletingDocumentId === doc._id}
+                  >
+                    {deletingDocumentId === doc._id ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
+                    ) : (
+                      <Trash2 className="h-4 w-4 text-red-500" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-gray-500 text-center py-4">No documents uploaded yet</p>
+        )}
+      </CardContent>
+    </Card>
+  );
+
   return (
     <div className="flex h-screen bg-gray-100">
       <Sidebar />
@@ -423,7 +677,7 @@ export default function PatientPage() {
                           {downloading ? (
                             <div className="flex items-center">
                               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
-                              Downloading...
+                              Download PDF
                             </div>
                           ) : (
                             <>
@@ -436,7 +690,10 @@ export default function PatientPage() {
                   </div>
                 </div>
                 {renderMedicalSections()}
-                {renderDiagnoses()}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                  {renderDiagnoses()}
+                  {renderDocuments()}
+                </div>
               </>
             )}
           </div>
