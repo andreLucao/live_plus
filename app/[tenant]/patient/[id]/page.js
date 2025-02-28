@@ -14,7 +14,7 @@ import { Toaster } from '@/components/ui/sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 
-export default function PatientPage() {
+export default function PaginaPaciente() {
   const { tenant, id } = useParams();
   const [patient, setPatient] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -76,18 +76,18 @@ export default function PatientPage() {
       const response = await fetch(`/api/${tenant}/patients/${id}`);
       
       if (!response.ok) {
-        throw new Error(`Failed to fetch patient details: ${response.statusText}`);
+        throw new Error(`Falha ao buscar detalhes do paciente: ${response.statusText}`);
       }
       
       const data = await response.json();
       
       if (!data || typeof data !== 'object') {
-        throw new Error('Invalid patient data received');
+        throw new Error('Dados de paciente inválidos recebidos');
       }
       
       setPatient(data);
     } catch (err) {
-      console.error('Error fetching patient:', err);
+      console.error('Erro ao buscar paciente:', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -99,14 +99,14 @@ export default function PatientPage() {
       const response = await fetch(`/api/${tenant}/patients/${id}/documents`);
       
       if (!response.ok) {
-        throw new Error(`Failed to fetch patient documents: ${response.statusText}`);
+        throw new Error(`Falha ao buscar documentos do paciente: ${response.statusText}`);
       }
       
       const data = await response.json();
       setDocuments(data);
     } catch (err) {
-      console.error('Error fetching patient documents:', err);
-      toast.error(`Failed to fetch documents: ${err.message}`);
+      console.error('Erro ao buscar documentos do paciente:', err);
+      toast.error(`Falha ao buscar documentos: ${err.message}`);
     }
   };
 
@@ -139,16 +139,16 @@ export default function PatientPage() {
       });
       
       if (!response.ok) {
-        throw new Error(`Failed to update patient: ${response.statusText}`);
+        throw new Error(`Falha ao atualizar paciente: ${response.statusText}`);
       }
       
       const updatedPatient = await response.json();
       setPatient(updatedPatient);
       setEditMode(false);
-      toast.success("Patient information updated successfully");
+      toast.success("Informações do paciente atualizadas com sucesso");
     } catch (err) {
-      console.error('Error updating patient:', err);
-      toast.error(`Failed to update patient: ${err.message}`);
+      console.error('Erro ao atualizar paciente:', err);
+      toast.error(`Falha ao atualizar paciente: ${err.message}`);
     } finally {
       setSaving(false);
     }
@@ -158,37 +158,37 @@ export default function PatientPage() {
     try {
       setDownloading(true);
       
-      // Call the PDF generation API
+      // Chama a API de geração de PDF
       const response = await fetch(`/api/${tenant}/patients/${id}/pdf`, {
         method: 'POST',
       });
       
       if (!response.ok) {
-        throw new Error(`Failed to generate PDF: ${response.statusText}`);
+        throw new Error(`Falha ao gerar PDF: ${response.statusText}`);
       }
       
-      // Get the PDF blob
+      // Obtém o blob do PDF
       const blob = await response.blob();
       
-      // Create a download link
+      // Cria um link de download
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.style.display = 'none';
       a.href = url;
-      a.download = `patient_${id}.pdf`;
+      a.download = `paciente_${id}.pdf`;
       
-      // Trigger the download
+      // Aciona o download
       document.body.appendChild(a);
       a.click();
       
-      // Clean up
+      // Limpeza
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
       
-      toast.success("PDF downloaded successfully");
+      toast.success("PDF baixado com sucesso");
     } catch (err) {
-      console.error('Error downloading PDF:', err);
-      toast.error(`Failed to download PDF: ${err.message}`);
+      console.error('Erro ao baixar PDF:', err);
+      toast.error(`Falha ao baixar PDF: ${err.message}`);
     } finally {
       setDownloading(false);
     }
@@ -198,7 +198,7 @@ export default function PatientPage() {
     const file = e.target.files[0];
     if (file) {
       setSelectedFile(file);
-      // Use the file name as default document name if not set
+      // Usa o nome do arquivo como nome padrão do documento se não estiver definido
       if (!documentName) {
         setDocumentName(file.name);
       }
@@ -209,7 +209,7 @@ export default function PatientPage() {
     e.preventDefault();
     
     if (!selectedFile) {
-      toast.error('Please select a file to upload');
+      toast.error('Por favor, selecione um arquivo para upload');
       return;
     }
     
@@ -227,22 +227,22 @@ export default function PatientPage() {
       });
       
       if (!response.ok) {
-        throw new Error(`Failed to upload document: ${response.statusText}`);
+        throw new Error(`Falha ao fazer upload do documento: ${response.statusText}`);
       }
       
-      // Reset form
+      // Resetar formulário
       setSelectedFile(null);
       setDocumentName('');
       setDocumentDescription('');
       setDocumentDialogOpen(false);
       
-      // Refresh documents list
+      // Atualizar lista de documentos
       await fetchPatientDocuments();
       
-      toast.success('Document uploaded successfully');
+      toast.success('Documento enviado com sucesso');
     } catch (err) {
-      console.error('Error uploading document:', err);
-      toast.error(`Failed to upload document: ${err.message}`);
+      console.error('Erro ao fazer upload do documento:', err);
+      toast.error(`Falha ao fazer upload do documento: ${err.message}`);
     } finally {
       setUploadingDocument(false);
     }
@@ -253,31 +253,31 @@ export default function PatientPage() {
       const response = await fetch(`/api/${tenant}/patients/${id}/documents/${documentId}`);
       
       if (!response.ok) {
-        throw new Error(`Failed to download document: ${response.statusText}`);
+        throw new Error(`Falha ao baixar documento: ${response.statusText}`);
       }
       
-      // Get the document blob
+      // Obtém o blob do documento
       const blob = await response.blob();
       
-      // Create a download link
+      // Cria um link de download
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.style.display = 'none';
       a.href = url;
       a.download = documentName;
       
-      // Trigger the download
+      // Aciona o download
       document.body.appendChild(a);
       a.click();
       
-      // Clean up
+      // Limpeza
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
       
-      toast.success("Document downloaded successfully");
+      toast.success("Documento baixado com sucesso");
     } catch (err) {
-      console.error('Error downloading document:', err);
-      toast.error(`Failed to download document: ${err.message}`);
+      console.error('Erro ao baixar documento:', err);
+      toast.error(`Falha ao baixar documento: ${err.message}`);
     }
   };
 
@@ -290,22 +290,22 @@ export default function PatientPage() {
       });
       
       if (!response.ok) {
-        throw new Error(`Failed to delete document: ${response.statusText}`);
+        throw new Error(`Falha ao excluir documento: ${response.statusText}`);
       }
       
-      // Refresh documents list
+      // Atualizar lista de documentos
       await fetchPatientDocuments();
       
-      toast.success('Document deleted successfully');
+      toast.success('Documento excluído com sucesso');
     } catch (err) {
-      console.error('Error deleting document:', err);
-      toast.error(`Failed to delete document: ${err.message}`);
+      console.error('Erro ao excluir documento:', err);
+      toast.error(`Falha ao excluir documento: ${err.message}`);
     } finally {
       setDeletingDocumentId(null);
     }
   };
 
-  // Helper function to handle both string and array content
+  // Função auxiliar para lidar com conteúdo de string e array
   const formatContent = (content) => {
     if (Array.isArray(content)) {
       return content;
@@ -318,37 +318,37 @@ export default function PatientPage() {
 
   const sections = [
     {
-      title: 'Clinical History',
+      title: 'Histórico Clínico',
       icon: Heart,
       field: 'clinicalHistory',
       content: formatContent(patient?.medicalDetails?.clinicalHistory)
     },
     {
-      title: 'Surgical History',
+      title: 'Histórico Cirúrgico',
       icon: User,
       field: 'surgicalHistory',
       content: formatContent(patient?.medicalDetails?.surgicalHistory)
     },
     {
-      title: 'Family History',
+      title: 'Histórico Familiar',
       icon: User,
       field: 'familyHistory',
       content: formatContent(patient?.medicalDetails?.familyHistory)
     },
     {
-      title: 'Habits',
+      title: 'Hábitos',
       icon: User,
       field: 'habits',
       content: formatContent(patient?.medicalDetails?.habits)
     },
     {
-      title: 'Allergies',
+      title: 'Alergias',
       icon: AlertTriangle,
       field: 'allergies',
       content: formatContent(patient?.medicalDetails?.allergies)
     },
     {
-      title: 'Current Medications',
+      title: 'Medicamentos Atuais',
       icon: Pill,
       field: 'medications',
       content: formatContent(patient?.medicalDetails?.medications)
@@ -363,7 +363,7 @@ export default function PatientPage() {
 
   const renderError = () => (
     <Alert variant="destructive">
-      <AlertTitle>Error loading patient details</AlertTitle>
+      <AlertTitle>Erro ao carregar detalhes do paciente</AlertTitle>
       <p className="mt-2 text-sm">{error}</p>
     </Alert>
   );
@@ -383,7 +383,7 @@ export default function PatientPage() {
               <Textarea
                 value={formData[field]}
                 onChange={(e) => handleInputChange(field, e.target.value)}
-                placeholder={`Enter ${title.toLowerCase()}`}
+                placeholder={`Digite ${title.toLowerCase()}`}
                 className="w-full"
               />
             ) : (
@@ -395,7 +395,7 @@ export default function PatientPage() {
                     </div>
                   ))
                 ) : (
-                  <div>No information available</div>
+                  <div>Nenhuma informação disponível</div>
                 )}
               </div>
             )}
@@ -411,13 +411,13 @@ export default function PatientPage() {
     return (
       <Card className="bg-white">
         <CardHeader>
-          <CardTitle className="text-base font-medium">Latest Diagnoses</CardTitle>
+          <CardTitle className="text-base font-medium">Últimos Diagnósticos</CardTitle>
         </CardHeader>
         <CardContent>
           {editMode ? (
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Date</label>
+                <label className="block text-sm font-medium mb-1">Data</label>
                 <Input
                   type="date"
                   value={formData.lastDiagnosis.date}
@@ -425,19 +425,19 @@ export default function PatientPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Diagnosis</label>
+                <label className="block text-sm font-medium mb-1">Diagnóstico</label>
                 <Input
                   value={formData.lastDiagnosis.diagnosis}
                   onChange={(e) => handleDiagnosisChange('diagnosis', e.target.value)}
-                  placeholder="Enter diagnosis"
+                  placeholder="Digite o diagnóstico"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Notes</label>
+                <label className="block text-sm font-medium mb-1">Observações</label>
                 <Textarea
                   value={formData.lastDiagnosis.notes}
                   onChange={(e) => handleDiagnosisChange('notes', e.target.value)}
-                  placeholder="Enter notes"
+                  placeholder="Digite observações"
                   rows={4}
                 />
               </div>
@@ -462,7 +462,7 @@ export default function PatientPage() {
                     </div>
                     <div>
                       <div className="font-medium">
-                        {diagnosis.diagnosis || 'No diagnosis title'}
+                        {diagnosis.diagnosis || 'Sem título de diagnóstico'}
                       </div>
                       <div className="text-sm text-gray-500">
                         {new Date(diagnosis.date).toLocaleTimeString()}
@@ -477,7 +477,7 @@ export default function PatientPage() {
                 </div>
               ))
             ) : (
-              <p className="text-gray-500">No diagnoses recorded</p>
+              <p className="text-gray-500">Nenhum diagnóstico registrado</p>
             )
           )}
         </CardContent>
@@ -488,20 +488,20 @@ export default function PatientPage() {
   const renderDocuments = () => (
     <Card className="bg-white">
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-base font-medium">Patient Documents</CardTitle>
+        <CardTitle className="text-base font-medium">Documentos do Paciente</CardTitle>
         <Dialog open={documentDialogOpen} onOpenChange={setDocumentDialogOpen}>
           <DialogTrigger asChild>
             <Button size="sm">
-              <Upload className="h-4 w-4 mr-1" /> Upload Document
+              <Upload className="h-4 w-4 mr-1" /> Enviar Documento
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Upload Document</DialogTitle>
+              <DialogTitle>Enviar Documento</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleUploadDocument} className="space-y-4">
               <div>
-                <Label htmlFor="file">Select File</Label>
+                <Label htmlFor="file">Selecionar Arquivo</Label>
                 <Input 
                   id="file" 
                   type="file" 
@@ -510,21 +510,21 @@ export default function PatientPage() {
                 />
               </div>
               <div>
-                <Label htmlFor="documentName">Document Name</Label>
+                <Label htmlFor="documentName">Nome do Documento</Label>
                 <Input 
                   id="documentName" 
                   value={documentName} 
                   onChange={(e) => setDocumentName(e.target.value)} 
-                  placeholder="Enter document name" 
+                  placeholder="Digite o nome do documento" 
                 />
               </div>
               <div>
-                <Label htmlFor="documentDescription">Description (Optional)</Label>
+                <Label htmlFor="documentDescription">Descrição (Opcional)</Label>
                 <Textarea 
                   id="documentDescription" 
                   value={documentDescription} 
                   onChange={(e) => setDocumentDescription(e.target.value)} 
-                  placeholder="Enter document description" 
+                  placeholder="Digite a descrição do documento" 
                   rows={3} 
                 />
               </div>
@@ -534,7 +534,7 @@ export default function PatientPage() {
                   variant="outline" 
                   onClick={() => setDocumentDialogOpen(false)}
                 >
-                  Cancel
+                  Cancelar
                 </Button>
                 <Button 
                   type="submit" 
@@ -543,11 +543,11 @@ export default function PatientPage() {
                   {uploadingDocument ? (
                     <div className="flex items-center">
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Uploading...
+                      Enviando...
                     </div>
                   ) : (
                     <>
-                      <Upload className="h-4 w-4 mr-1" /> Upload
+                      <Upload className="h-4 w-4 mr-1" /> Enviar
                     </>
                   )}
                 </Button>
@@ -596,7 +596,7 @@ export default function PatientPage() {
             ))}
           </div>
         ) : (
-          <p className="text-gray-500 text-center py-4">No documents uploaded yet</p>
+          <p className="text-gray-500 text-center py-4">Nenhum documento enviado ainda</p>
         )}
       </CardContent>
     </Card>
@@ -614,7 +614,7 @@ export default function PatientPage() {
             ) : error ? (
               renderError()
             ) : !patient ? (
-              <Alert><AlertTitle>Patient not found</AlertTitle></Alert>
+              <Alert><AlertTitle>Paciente não encontrado</AlertTitle></Alert>
             ) : (
               <>
                 <div className="flex justify-between items-start mb-6">
@@ -623,11 +623,11 @@ export default function PatientPage() {
                       {patient?.email?.charAt(0).toUpperCase() || 'P'}
                     </div>
                     <div>
-                      <h1 className="text-xl font-medium">Patient Details</h1>
+                      <h1 className="text-xl font-medium">Detalhes do Paciente</h1>
                       <div className="text-gray-600">
                         <p>Email: {patient?.email || 'N/A'}</p>
-                        <p>Created: {patient?.createdAt ? new Date(patient.createdAt).toLocaleDateString() : 'N/A'}</p>
-                        <p>Last Login: {patient?.lastLoginAt ? new Date(patient.lastLoginAt).toLocaleDateString() : 'N/A'}</p>
+                        <p>Criado: {patient?.createdAt ? new Date(patient.createdAt).toLocaleDateString() : 'N/A'}</p>
+                        <p>Último Login: {patient?.lastLoginAt ? new Date(patient.lastLoginAt).toLocaleDateString() : 'N/A'}</p>
                       </div>
                     </div>
                   </div>
@@ -640,7 +640,7 @@ export default function PatientPage() {
                           onClick={() => setEditMode(false)}
                           disabled={saving}
                         >
-                          <X className="h-4 w-4 mr-1" /> Cancel
+                          <X className="h-4 w-4 mr-1" /> Cancelar
                         </Button>
                         <Button 
                           size="sm" 
@@ -650,11 +650,11 @@ export default function PatientPage() {
                           {saving ? (
                             <div className="flex items-center">
                               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                              Saving...
+                              Salvando...
                             </div>
                           ) : (
                             <>
-                              <Check className="h-4 w-4 mr-1" /> Save
+                              <Check className="h-4 w-4 mr-1" /> Salvar
                             </>
                           )}
                         </Button>
@@ -666,7 +666,7 @@ export default function PatientPage() {
                           size="sm" 
                           onClick={() => setEditMode(true)}
                         >
-                          <Edit className="h-4 w-4 mr-1" /> Edit
+                          <Edit className="h-4 w-4 mr-1" /> Editar
                         </Button>
                         <Button 
                           variant="outline" 
@@ -677,11 +677,11 @@ export default function PatientPage() {
                           {downloading ? (
                             <div className="flex items-center">
                               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
-                              Download PDF
+                              Baixar PDF
                             </div>
                           ) : (
                             <>
-                              <Download className="h-4 w-4 mr-1" /> Download PDF
+                              <Download className="h-4 w-4 mr-1" /> Baixar PDF
                             </>
                           )}
                         </Button>
