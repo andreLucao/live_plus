@@ -26,6 +26,24 @@ export async function POST(request) {
       );
     }
 
+    // Verify tenant exists before sending email
+    try {
+      const verifyResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/tenants/verify/${tenant}`);
+      
+      if (!verifyResponse.ok) {
+        return NextResponse.json(
+          { error: 'Invalid tenant' },
+          { status: 400 }
+        );
+      }
+    } catch (error) {
+      console.error('Tenant verification error:', error);
+      return NextResponse.json(
+        { error: 'Failed to verify tenant' },
+        { status: 500 }
+      );
+    }
+
     // Create a JWT token with both email and tenant
     const token = jwt.sign({ email, tenant }, EMAIL_SECRET, { expiresIn: '1h' });
     

@@ -16,20 +16,7 @@ export async function middleware(request) {
 
   // Allow access to login page without authentication
   if (pathname.endsWith('/login')) {
-    // Verify tenant exists for login path
-    if (tenant) {
-      try {
-        const verifyResponse = await fetch(`${request.nextUrl.origin}/api/tenants/verify/${tenant}`);
-        
-        if (!verifyResponse.ok) {
-          // Tenant doesn't exist, redirect to main site
-          return NextResponse.redirect('https://liveplus.pro');
-        }
-      } catch (error) {
-        console.error('Tenant verification error:', error);
-        return NextResponse.redirect(new URL('/', request.url));
-      }
-    }
+    // Don't verify tenant here anymore - just allow access to login page
     return NextResponse.next();
   }
 

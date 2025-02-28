@@ -3,8 +3,8 @@ import { cookies } from 'next/headers';
 
 export async function POST() {
   try {
-    // Get the cookie store
-    const cookieStore = cookies();
+    // Get the cookie store - needs to be awaited
+    const cookieStore = await cookies();
     
     // Delete the auth token cookie
     cookieStore.delete('auth_token');

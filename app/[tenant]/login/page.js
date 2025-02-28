@@ -28,6 +28,7 @@ export default function Home() {
     
     setIsLoading(true);
     try {
+      // No tenant verification here - it will be done server-side
       const response = await fetch('/api/auth/email', {
         method: 'POST',
         headers: {
@@ -40,7 +41,7 @@ export default function Home() {
       if (response.ok) {
         setMessage('Please check your email for the login link!');
       } else {
-        setMessage('Error sending email. Please try again.');
+        setMessage(data.error || 'Error sending email. Please try again.');
       }
     } catch (error) {
       setMessage('Error sending email. Please try again.');

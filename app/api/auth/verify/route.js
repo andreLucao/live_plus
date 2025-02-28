@@ -43,6 +43,19 @@ export async function GET(request) {
       return NextResponse.redirect(new URL(`${baseUrl}/?error=invalid-tenant`));
     }
 
+    // Verify tenant exists
+    try {
+      const verifyResponse = await fetch(`${baseUrl}/api/tenants/verify/${tenant}`);
+      
+      if (!verifyResponse.ok) {
+        console.error('Invalid tenant:', tenant);
+        return NextResponse.redirect(new URL(`${baseUrl}/?error=invalid-tenant`));
+      }
+    } catch (error) {
+      console.error('Tenant verification error:', error);
+      return NextResponse.redirect(new URL(`${baseUrl}/?error=tenant-verification-failed`));
+    }
+
     // Verify tenant matches token
     if (tenant !== decoded.tenant) {
       console.error('Tenant mismatch:', { urlTenant: tenant, tokenTenant: decoded.tenant });
@@ -124,7 +137,7 @@ export async function GET(request) {
         path: '/',
       });
 
-      return NextResponse.redirect(new URL(`${tenantUrl}/dashboard`));
+      return NextResponse.redirect(new URL(`${tenantUrl}/financeiro`));
     } catch (error) {
       console.error('Session creation failed:', error);
       return NextResponse.redirect(new URL(`${tenantUrl}/?error=session-error`));
