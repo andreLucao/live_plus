@@ -12,7 +12,7 @@ export default function Home() {
       {/* Main Content */}
       <div className="flex-1 p-4 md:p-8 pt-16 md:pt-8 md:ml-64">
         <h1 className="text-2xl font-bold text-gray-800 dark:text-white mb-6">
-          Hello my friend
+          
         </h1>
         <p className="text-gray-600 dark:text-gray-300">
 
