@@ -28,8 +28,15 @@ export async function POST(request) {
 
     // Verify tenant exists before sending email
     try {
-      // Ensure proper URL construction without double slashes
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, ''); // Remove trailing slash if present
+      // Ensure proper URL construction with protocol
+      let baseUrl = process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, ''); // Remove trailing slash if present
+      console.log(baseUrl);
+      
+      // Add protocol if missing
+      if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
+        baseUrl = `https://${baseUrl}`;
+      }
+      
       const verifyUrl = `${baseUrl}/api/tenants/verify/${tenant}`;
       
       console.log('Verifying tenant at URL:', verifyUrl);
