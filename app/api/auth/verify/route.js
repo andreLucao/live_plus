@@ -45,7 +45,13 @@ export async function GET(request) {
 
     // Verify tenant exists
     try {
-      const verifyResponse = await fetch(`${baseUrl}/api/tenants/verify/${tenant}`);
+      // Ensure proper URL construction without double slashes
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, ''); // Remove trailing slash if present
+      const verifyUrl = `${baseUrl}/api/tenants/verify/${tenant}`;
+      
+      console.log('Verifying tenant at URL:', verifyUrl);
+      
+      const verifyResponse = await fetch(verifyUrl);
       
       if (!verifyResponse.ok) {
         console.error('Invalid tenant:', tenant);

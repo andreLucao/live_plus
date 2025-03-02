@@ -28,8 +28,13 @@ export async function POST(request) {
 
     // Verify tenant exists before sending email
     try {
-      console.log(tenant)
-      const verifyResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/tenants/verify/${tenant}`);
+      // Ensure proper URL construction without double slashes
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, ''); // Remove trailing slash if present
+      const verifyUrl = `${baseUrl}/api/tenants/verify/${tenant}`;
+      
+      console.log('Verifying tenant at URL:', verifyUrl);
+      
+      const verifyResponse = await fetch(verifyUrl);
       
       if (!verifyResponse.ok) {
         return NextResponse.json(
@@ -40,7 +45,7 @@ export async function POST(request) {
     } catch (error) {
       console.error('Tenant verification error:', error);
       return NextResponse.json(
-        { error: 'Failed to verify tenant' },
+        { error: 'Failed to verify tenant', details: error.message },
         { status: 500 }
       );
     }
