@@ -13,8 +13,11 @@ export async function GET(request) {
     let token = searchParams.get('token');
     let tenant = searchParams.get('tenant');
     
-    // Get base URL for redirects
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL;
+    // Get base URL for redirects and ensure it has protocol
+    let baseUrl = process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '');
+    if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
+      baseUrl = `https://${baseUrl}`;
+    }
     
     // Basic validation
     if (!token) {
@@ -156,7 +159,18 @@ export async function GET(request) {
     }
   } catch (error) {
     console.error('Verification error:', error);
-    const errorUrl = `${process.env.NEXT_PUBLIC_APP_URL}/?error=server-error`;
+    
+    // Fix URL construction for error redirect
+    let baseUrl = process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '');
+    
+    // Add protocol if missing
+    if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
+      baseUrl = `https://${baseUrl}`;
+    }
+    
+    const errorUrl = `${baseUrl}/?error=server-error`;
+    console.log('Redirecting to error URL:', errorUrl);
+    
     return NextResponse.redirect(new URL(errorUrl));
   }
 }
