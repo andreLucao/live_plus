@@ -28,6 +28,7 @@ export async function POST(request) {
 
     // Verify tenant exists before sending email
     try {
+      console.log(tenant)
       const verifyResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/tenants/verify/${tenant}`);
       
       if (!verifyResponse.ok) {
