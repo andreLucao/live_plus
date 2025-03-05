@@ -4,138 +4,103 @@
 
 import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts'
-import { TrendingUp, TrendingDown, DollarSign, Calendar, AlertCircle, LayoutDashboard } from "lucide-react"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Overview } from "@/components/overview"
+import { RecentTransactions } from "@/components/recent-transactions"
+import { FinancialMetrics } from "@/components/financial-metrics"
+import { ReconciliationTable } from "@/components/reconciliation-table"
+import { CustomerMetrics } from "@/components/customer-metrics"
+import { CashFlow } from "@/components/cash-flow"
+import { CalendarDays, AlertCircle, TrendingUp, TrendingDown } from "lucide-react"
 import Sidebar from "@/components/Sidebar"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
 export default function HospitalDashboardComponent() {
   const [incomes, setIncomes] = useState([])
-  const [expenses, setExpenses] = useState([])
+  const [bills, setBills] = useState([])
+  const [lastMonthIncome, setLastMonthIncome] = useState(0)
+  const [lastMonthExpenses, setLastMonthExpenses] = useState(0)
+  const [lastMonthProfit, setLastMonthProfit] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState("")
-  const [startDate, setStartDate] = useState("")
-  const [endDate, setEndDate] = useState("")
-  const [dateRange, setDateRange] = useState("month")
   const { tenant } = useParams()
 
   useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [incomesResponse, billsResponse] = await Promise.all([
+          fetch(`/api/${tenant}/income`),
+          fetch(`/api/${tenant}/bills`)
+        ])
+
+        if (!incomesResponse.ok || !billsResponse.ok) {
+          throw new Error('Failed to fetch data')
+        }
+
+        const [incomesData, billsData] = await Promise.all([
+          incomesResponse.json(),
+          billsResponse.json()
+        ])
+
+        // Ordena os dados por data
+        const sortedIncomes = incomesData.sort((a, b) => new Date(b.date) - new Date(a.date))
+        const sortedBills = billsData.sort((a, b) => new Date(b.date) - new Date(a.date))
+
+        // Agrupa por mês
+        const incomesByMonth = groupByMonth(sortedIncomes)
+        const expensesByMonth = groupByMonth(sortedBills)
+
+        // Pega os meses únicos ordenados
+        const months = [...new Set([...Object.keys(incomesByMonth), ...Object.keys(expensesByMonth)])].sort().reverse()
+
+        // Se houver pelo menos dois meses de dados
+        if (months.length >= 2) {
+          const currentMonth = months[0]
+          const previousMonth = months[1]
+
+          // Calcula totais do mês anterior
+          setLastMonthIncome(
+            (incomesByMonth[previousMonth] || []).reduce((sum, income) => sum + income.amount, 0)
+          )
+          setLastMonthExpenses(
+            (expensesByMonth[previousMonth] || []).reduce((sum, bill) => sum + bill.amount, 0)
+          )
+          setLastMonthProfit(
+            (incomesByMonth[previousMonth] || []).reduce((sum, income) => sum + income.amount, 0) -
+            (expensesByMonth[previousMonth] || []).reduce((sum, bill) => sum + bill.amount, 0)
+          )
+        }
+
+        setIncomes(sortedIncomes)
+        setBills(sortedBills)
+        setError("")
+      } catch (error) {
+        setError("Falha ao carregar dados do dashboard. Por favor, tente novamente mais tarde.")
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
     fetchData()
-  }, [])
+  }, [tenant])
 
-  const fetchData = async () => {
-    try {
-      const [incomesResponse, expensesResponse] = await Promise.all([
-        fetch(`/api/${tenant}/income`),
-        fetch(`/api/${tenant}/bills`)
-      ])
-
-      if (!incomesResponse.ok || !expensesResponse.ok) 
-        throw new Error('Failed to fetch data')
-
-      const [incomesData, expensesData] = await Promise.all([
-        incomesResponse.json(),
-        expensesResponse.json()
-      ])
-
-      setIncomes(incomesData)
-      setExpenses(expensesData)
-      setError("")
-    } catch (error) {
-      setError("Falha ao carregar dados do dashboard. Por favor, tente novamente mais tarde.")
-    } finally {
-      setIsLoading(false)
-    }
+  // Função auxiliar para agrupar dados por mês
+  const groupByMonth = (data) => {
+    return data.reduce((groups, item) => {
+      const date = new Date(item.date)
+      const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+      if (!groups[monthYear]) {
+        groups[monthYear] = []
+      }
+      groups[monthYear].push(item)
+      return groups
+    }, {})
   }
 
-  const filterData = (data) => {
-    if (!startDate && !endDate) return data
-    
-    return data.filter(item => {
-      const itemDate = new Date(item.date)
-      const start = startDate ? new Date(startDate) : new Date(0)
-      const end = endDate ? new Date(endDate) : new Date()
-      end.setHours(23, 59, 59, 999)
-      
-      return itemDate >= start && itemDate <= end
-    })
-  }
-
-  const filteredIncomes = filterData(incomes)
-  const filteredExpenses = filterData(expenses)
-
-  const totalIncome = filteredIncomes.reduce((sum, income) => sum + income.amount, 0)
-  const totalExpenses = filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0)
+  const totalIncome = incomes.reduce((sum, income) => sum + income.amount, 0)
+  const totalExpenses = bills.reduce((sum, bill) => sum + bill.amount, 0)
   const profit = totalIncome - totalExpenses
-
-  const getPercentageChange = (current, previous) => {
-    if (previous === 0) return 0
-    return ((current - previous) / previous) * 100
-  }
-
-  const getPreviousPeriodData = () => {
-    const currentStart = startDate ? new Date(startDate) : new Date()
-    const currentEnd = endDate ? new Date(endDate) : new Date()
-    const difference = currentEnd - currentStart
-    const previousStart = new Date(currentStart - difference)
-    
-    const previousIncomes = incomes.filter(item => {
-      const date = new Date(item.date)
-      return date >= previousStart && date < currentStart
-    })
-    
-    const previousExpenses = expenses.filter(item => {
-      const date = new Date(item.date)
-      return date >= previousStart && date < currentStart
-    })
-
-    return {
-      income: previousIncomes.reduce((sum, income) => sum + income.amount, 0),
-      expenses: previousExpenses.reduce((sum, expense) => sum + expense.amount, 0)
-    }
-  }
-
-  const previousPeriod = getPreviousPeriodData()
-  const incomeChange = getPercentageChange(totalIncome, previousPeriod.income)
-  const expensesChange = getPercentageChange(totalExpenses, previousPeriod.expenses)
-
-  const prepareMonthlyData = () => {
-    const monthlyData = {}
-    
-    const allDates = [...filteredIncomes, ...filteredExpenses].map(item => {
-      const date = new Date(item.date)
-      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-    })
-    
-    const uniqueMonths = [...new Set(allDates)].sort()
-    uniqueMonths.forEach(month => {
-      monthlyData[month] = { month, income: 0, expense: 0 }
-    })
-    
-    filteredIncomes.forEach(item => {
-      const date = new Date(item.date)
-      const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-      monthlyData[monthYear].income += item.amount
-    })
-    
-    filteredExpenses.forEach(item => {
-      const date = new Date(item.date)
-      const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-      monthlyData[monthYear].expense += item.amount
-    })
-    
-    return Object.values(monthlyData).map(item => ({
-      ...item,
-      income: Number(item.income.toFixed(2)),
-      expense: Number(item.expense.toFixed(2)),
-      profit: Number((item.income - item.expense).toFixed(2))
-    }))
-  }
-
-  const chartData = prepareMonthlyData()
 
   if (isLoading) {
     return (
@@ -153,196 +118,163 @@ export default function HospitalDashboardComponent() {
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
       <Sidebar />
-      
-      <main className="flex-1 overflow-y-auto">
-        <div className="p-6 space-y-6">
-          {error && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
+      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+        {error && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
 
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              <LayoutDashboard size={20} />
-              Dashboard Financeiro
-            </h1>
-            
-            <div className="flex flex-col md:flex-row gap-4 items-end">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="start-date" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Data Inicial
-                </Label>
-                <Input
-                  id="start-date"
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full md:w-40"
-                />
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="end-date" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Data Final
-                </Label>
-                <Input
-                  id="end-date"
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full md:w-40"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="grid gap-6 md:grid-cols-3">
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Receita Total
-                </CardTitle>
-                <DollarSign className="h-4 w-4 text-[#1e1e1e]" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-[#1e1e1e]">
-                  R${totalIncome.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                </div>
-                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                  {incomeChange >= 0 ? (
-                    <span className="text-green-500">+{incomeChange.toFixed(1)}%</span>
-                  ) : (
-                    <span className="text-red-500">{incomeChange.toFixed(1)}%</span>
-                  )}
-                  {" "}vs período anterior
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Despesa Total
-                </CardTitle>
-                <TrendingDown className="h-4 w-4 text-[#1e1e1e]" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-[#1e1e1e]">
-                  R${totalExpenses.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                </div>
-                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                  {expensesChange >= 0 ? (
-                    <span className="text-red-500">+{expensesChange.toFixed(1)}%</span>
-                  ) : (
-                    <span className="text-green-500">{expensesChange.toFixed(1)}%</span>
-                  )}
-                  {" "}vs período anterior
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Resultado
-                </CardTitle>
-                <TrendingUp className="h-4 w-4 text-[#1e1e1e]" />
-              </CardHeader>
-              <CardContent>
-                <div className={`text-2xl font-bold ${profit >= 0 ? 'text-[#1e1e1e]' : 'text-red-500'}`}>
-                  R${profit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                </div>
-                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                  Margem: {((profit / totalIncome) * 100).toFixed(1)}%
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">
-                  Receitas e Despesas
-                </CardTitle>
-                <CardDescription>Análise comparativa mensal</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis 
-                        dataKey="month" 
-                        tickFormatter={(value) => {
-                          const [year, month] = value.split('-')
-                          return `${month}/${year.slice(2)}`
-                        }}
-                      />
-                      <YAxis />
-                      <Tooltip 
-                        formatter={(value) => [`R$${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, '']}
-                        labelFormatter={(label) => {
-                          const [year, month] = label.split('-')
-                          return `${month}/${year}`
-                        }}
-                      />
-                      <Legend />
-                      <Bar dataKey="income" name="Receitas" fill="#2196F3" />
-                      <Bar dataKey="expense" name="Despesas" fill="#F44336" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">
-                  Resultado Mensal
-                </CardTitle>
-                <CardDescription>Evolução do resultado operacional</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis 
-                        dataKey="month" 
-                        tickFormatter={(value) => {
-                          const [year, month] = value.split('-')
-                          return `${month}/${year.slice(2)}`
-                        }}
-                      />
-                      <YAxis />
-                      <Tooltip 
-                        formatter={(value) => [`R$${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, '']}
-                        labelFormatter={(label) => {
-                          const [year, month] = label.split('-')
-                          return `${month}/${year}`
-                        }}
-                      />
-                      <Legend />
-                      <Line 
-                        type="monotone" 
-                        dataKey="profit" 
-                        name="Resultado"
-                        stroke="#22c55e"
-                        strokeWidth={2}
-                        dot={{ r: 4 }}
-                        activeDot={{ r: 6 }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
+        <div className="flex items-center justify-between space-y-2">
+          <div>
+            <h2 className="text-3xl font-bold tracking-tight">Dashboard Financeiro</h2>
+            <p className="text-muted-foreground flex items-center gap-2 mt-1">
+              <CalendarDays className="h-4 w-4" />
+              <span>Período: {new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</span>
+            </p>
           </div>
         </div>
-        </main>
+
+        <Tabs defaultValue="overview" className="space-y-4">
+          <div className="bg-white p-2 rounded-lg shadow-sm">
+            <TabsList className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <TabsTrigger value="overview" className="text-sm">
+                Visão Geral
+              </TabsTrigger>
+              <TabsTrigger value="cashflow" className="text-sm">
+                Fluxo de Caixa
+              </TabsTrigger>
+              <TabsTrigger value="dre" className="text-sm">
+                DRE
+              </TabsTrigger>
+              <TabsTrigger value="reconciliation" className="text-sm">
+                Conciliação
+              </TabsTrigger>
+              <TabsTrigger value="metrics" className="text-sm">
+                Indicadores
+              </TabsTrigger>
+            </TabsList>
+          </div>
+
+          <TabsContent value="overview" className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <Card className="shadow-sm hover:shadow-md transition-shadow">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Receita Total</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    R$ {totalIncome.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </div>
+                  {lastMonthIncome > 0 && (
+                    <div className="flex items-center mt-1">
+                      {totalIncome > lastMonthIncome ? (
+                        <TrendingUp className="w-4 h-4 text-green-500 mr-1" />
+                      ) : (
+                        <TrendingDown className="w-4 h-4 text-red-500 mr-1" />
+                      )}
+                      <span className={`text-sm ${totalIncome > lastMonthIncome ? "text-green-500" : "text-red-500"}`}>
+                        {(((totalIncome - lastMonthIncome) / lastMonthIncome) * 100).toFixed(1)}% mês anterior
+                      </span>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card className="shadow-sm hover:shadow-md transition-shadow">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Despesas</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    R$ {totalExpenses.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </div>
+                  {lastMonthExpenses > 0 && (
+                    <div className="flex items-center mt-1">
+                      {totalExpenses < lastMonthExpenses ? (
+                        <TrendingDown className="w-4 h-4 text-green-500 mr-1" />
+                      ) : (
+                        <TrendingUp className="w-4 h-4 text-red-500 mr-1" />
+                      )}
+                      <span className={`text-sm ${totalExpenses < lastMonthExpenses ? "text-green-500" : "text-red-500"}`}>
+                        {(((totalExpenses - lastMonthExpenses) / lastMonthExpenses) * 100).toFixed(1)}% mês anterior
+                      </span>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card className="shadow-sm hover:shadow-md transition-shadow">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Lucro Líquido</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className={`text-2xl font-bold ${profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    R$ {profit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </div>
+                  {lastMonthProfit !== 0 && (
+                    <div className="flex items-center mt-1">
+                      {profit > lastMonthProfit ? (
+                        <TrendingUp className="w-4 h-4 text-green-500 mr-1" />
+                      ) : (
+                        <TrendingDown className="w-4 h-4 text-red-500 mr-1" />
+                      )}
+                      <span className={`text-sm ${profit > lastMonthProfit ? "text-green-500" : "text-red-500"}`}>
+                        {(((profit - lastMonthProfit) / Math.abs(lastMonthProfit)) * 100).toFixed(1)}% mês anterior
+                      </span>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card className="shadow-sm hover:shadow-md transition-shadow">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Taxa de Conversão</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">32.8%</div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+              <Card className="col-span-4 shadow-sm">
+                <CardHeader>
+                  <CardTitle>Visão Geral</CardTitle>
+                </CardHeader>
+                <CardContent className="pl-2">
+                  <Overview />
+                </CardContent>
+              </Card>
+              <Card className="col-span-3 shadow-sm">
+                <CardHeader>
+                  <CardTitle>Transações Recentes</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <RecentTransactions />
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="cashflow" className="space-y-4">
+            <CashFlow />
+          </TabsContent>
+
+          <TabsContent value="dre" className="space-y-4">
+            <FinancialMetrics />
+          </TabsContent>
+
+          <TabsContent value="reconciliation" className="space-y-4">
+            <ReconciliationTable />
+          </TabsContent>
+
+          <TabsContent value="metrics" className="space-y-4">
+            <CustomerMetrics />
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
-  );
+  )
 }

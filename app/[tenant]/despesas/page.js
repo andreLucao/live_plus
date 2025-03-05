@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
-import { Plus, Trash2, Edit2, Save, X, DollarSign, Calendar, Tag, AlertCircle, FileText } from "lucide-react"
+import { Plus, Trash2, Edit2, Save, X, DollarSign, Calendar as CalendarIcon, Tag, AlertCircle, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -11,6 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { cn } from "@/lib/utils"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Calendar } from "@/components/ui/calendar"
 import {
   Dialog,
   DialogContent,
@@ -23,7 +26,16 @@ import Sidebar from "@/components/Sidebar"
 export default function ExpensesPage() {
   // Estado para armazenar a lista de despesas e controles da interface
   const [bills, setBills] = useState([])
-  const [newBill, setNewBill] = useState({ name: "", amount: "", date: "", category: "" })
+  const [newBill, setNewBill] = useState({ 
+    name: "", 
+    amount: "", 
+    date: "", 
+    category: "",
+    supplierName: "",
+    time: "",
+    paymentMethod: "",
+    paymentType: "PF"
+  })
   const [monthFilter, setMonthFilter] = useState("all")
   const [categoryFilter, setCategoryFilter] = useState("all")
   const [editingId, setEditingId] = useState(null)
@@ -38,6 +50,7 @@ export default function ExpensesPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [deleteConfirmation, setDeleteConfirmation] = useState("")
   const [itemToDelete, setItemToDelete] = useState(null)
+  const [expenseType, setExpenseType] = useState("PF")
   const { tenant } = useParams()
 
   // Efeito para carregar as despesas ao montar o componente
@@ -80,13 +93,24 @@ export default function ExpensesPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             ...newBill,
-            amount: Number.parseFloat(newBill.amount)
+            amount: Number.parseFloat(newBill.amount),
+            paymentType: expenseType
           }),
         })
 
         if (!response.ok) throw new Error('Failed to add bill')
         await fetchBills()
-        setNewBill({ name: "", amount: "", date: "", category: "" })
+        setNewBill({ 
+          name: "", 
+          amount: "", 
+          date: "", 
+          category: "",
+          supplierName: "",
+          time: "",
+          paymentMethod: "",
+          paymentType: "PF"
+        })
+        setExpenseType("PF")
         setIsModalOpen(false)
         setError("")
       } catch (error) {
@@ -134,7 +158,11 @@ export default function ExpensesPage() {
       name: billToEdit.name,
       amount: billToEdit.amount.toString(),
       date: new Date(billToEdit.date).toISOString().split('T')[0],
-      category: billToEdit.category
+      category: billToEdit.category,
+      supplierName: billToEdit.supplierName || "",
+      time: billToEdit.time || "",
+      paymentMethod: billToEdit.paymentMethod || "",
+      paymentType: billToEdit.paymentType || "PF"
     })
     setEditingId(id)
   }
@@ -154,7 +182,16 @@ export default function ExpensesPage() {
       if (!response.ok) throw new Error('Failed to update bill')
       await fetchBills()
       setEditingId(null)
-      setNewBill({ name: "", amount: "", date: "", category: "" })
+      setNewBill({ 
+        name: "", 
+        amount: "", 
+        date: "", 
+        category: "",
+        supplierName: "",
+        time: "",
+        paymentMethod: "",
+        paymentType: "PF"
+      })
       setError("")
     } catch (error) {
       console.error('Error updating bill:', error)
@@ -164,7 +201,16 @@ export default function ExpensesPage() {
 
   const cancelEdit = () => {
     setEditingId(null)
-    setNewBill({ name: "", amount: "", date: "", category: "" })
+    setNewBill({ 
+      name: "", 
+      amount: "", 
+      date: "", 
+      category: "",
+      supplierName: "",
+      time: "",
+      paymentMethod: "",
+      paymentType: "PF"
+    })
   }
 
   // Função para filtrar dados por data
@@ -250,7 +296,6 @@ export default function ExpensesPage() {
               </div>
 
               <div className="flex items-center gap-4">
-                {/* Modal para adicionar nova despesa */}
                 <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
                   <DialogTrigger asChild>
                     <Button className="bg-[#009EE3] hover:bg-[#0080B7] text-white">
@@ -259,68 +304,125 @@ export default function ExpensesPage() {
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
-                      <DialogTitle>Adicionar Nova Despesa</DialogTitle>
+                      <DialogTitle className="text-2xl font-bold">Despesas</DialogTitle>
                     </DialogHeader>
                     <form onSubmit={addBill} className="space-y-4">
                       <div className="space-y-4">
-                        <div>
-                          <Label htmlFor="billName">
-                            Nome da Despesa
-                          </Label>
+                        <div className="space-y-2">
+                          <Label htmlFor="doctor-name-expense">Nome do Médico</Label>
                           <Input
-                            id="billName"
+                            id="doctor-name-expense"
                             value={newBill.name}
                             onChange={(e) => setNewBill({ ...newBill, name: e.target.value })}
-                            placeholder="Digite o nome da despesa"
+                            placeholder="Digite o nome do médico"
                           />
                         </div>
-                        <div>
-                          <Label htmlFor="billAmount">
-                            Valor
-                          </Label>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="supplier-name">Nome do Fornecedor</Label>
                           <Input
-                            id="billAmount"
-                            type="number"
-                            value={newBill.amount}
-                            onChange={(e) => setNewBill({ ...newBill, amount: e.target.value })}
-                            placeholder="Digite o valor"
-                            step="0.01"
+                            id="supplier-name"
+                            value={newBill.supplierName}
+                            onChange={(e) => setNewBill({ ...newBill, supplierName: e.target.value })}
+                            placeholder="Digite o nome do fornecedor"
                           />
                         </div>
-                        <div>
-                          <Label htmlFor="billDate">
-                            Data
-                          </Label>
-                          <Input
-                            id="billDate"
-                            type="date"
-                            value={newBill.date}
-                            onChange={(e) => setNewBill({ ...newBill, date: e.target.value })}
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="billCategory">
-                            Categoria
-                          </Label>
-                          <Select 
-                            value={newBill.category} 
-                            onValueChange={(value) => setNewBill({ ...newBill, category: value })}
-                          >
+
+                        <div className="space-y-2">
+                          <Label htmlFor="expense-category">Categoria</Label>
+                          <Select value={newBill.category} onValueChange={(value) => setNewBill({ ...newBill, category: value })}>
                             <SelectTrigger>
                               <SelectValue placeholder="Selecione a categoria" />
                             </SelectTrigger>
                             <SelectContent>
-                              {categories.map((category) => (
-                                <SelectItem key={category} value={category}>
-                                  {category}
-                                </SelectItem>
-                              ))}
+                              <SelectItem value="impostos">Impostos</SelectItem>
+                              <SelectItem value="marketing">Marketing</SelectItem>
+                              <SelectItem value="materiais">Materiais Médicos</SelectItem>
+                              <SelectItem value="equipamentos">Equipamentos</SelectItem>
+                              <SelectItem value="aluguel">Aluguel</SelectItem>
+                              <SelectItem value="utilities">Água/Luz/Internet</SelectItem>
+                              <SelectItem value="software">Software/Sistema</SelectItem>
+                              <SelectItem value="salarios">Salários</SelectItem>
+                              <SelectItem value="manutencao">Manutenção</SelectItem>
+                              <SelectItem value="limpeza">Material de Limpeza</SelectItem>
+                              <SelectItem value="escritorio">Material de Escritório</SelectItem>
+                              <SelectItem value="outros">Outros</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Tipo de Pagamento</Label>
+                          <div className="flex gap-4">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className={cn("flex-1", expenseType === "PF" && "bg-yellow-500 text-white hover:bg-yellow-600")}
+                              onClick={() => setExpenseType("PF")}
+                            >
+                              PF
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className={cn("flex-1", expenseType === "PJ" && "bg-yellow-500 text-white hover:bg-yellow-600")}
+                              onClick={() => setExpenseType("PJ")}
+                            >
+                              PJ
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Data e Hora</Label>
+                          <div className="flex gap-4">
+                            <Input
+                              type="date"
+                              className="w-full"
+                              value={newBill.date}
+                              onChange={(e) => setNewBill({ ...newBill, date: e.target.value })}
+                            />
+                            <Input 
+                              type="time" 
+                              className="w-[140px]"
+                              value={newBill.time}
+                              onChange={(e) => setNewBill({ ...newBill, time: e.target.value })}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="value-expense">Valor</Label>
+                          <Input
+                            id="value-expense"
+                            type="number"
+                            value={newBill.amount}
+                            onChange={(e) => setNewBill({ ...newBill, amount: e.target.value })}
+                            placeholder="R$ 0,00"
+                            step="0.01"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="payment-method-expense">Modalidade de Pagamento</Label>
+                          <Select
+                            value={newBill.paymentMethod}
+                            onValueChange={(value) => setNewBill({ ...newBill, paymentMethod: value })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione a modalidade" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="pix">PIX</SelectItem>
+                              <SelectItem value="card">Cartão</SelectItem>
+                              <SelectItem value="money">Dinheiro</SelectItem>
+                              <SelectItem value="transfer">Transferência</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
                       </div>
-                      <Button type="submit" className="w-full bg-[#009EE3] hover:bg-[#0080B7]">
-                        Adicionar Despesa
+                      <Button type="submit" className="w-full bg-[#009EE3] hover:bg-[#0080B7] text-white">
+                        Confirmar Pagamento
                       </Button>
                     </form>
                   </DialogContent>
@@ -445,20 +547,34 @@ export default function ExpensesPage() {
                         </div>
                       ) : (
                         <>
-                          <span className="font-medium text-gray-800 dark:text-gray-200 break-all">
-                            {bill.name}
-                          </span>
+                          <div className="flex flex-col gap-2 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-gray-800 dark:text-gray-200">
+                                {bill.name}
+                              </span>
+                              <Badge variant="outline" className="text-xs">
+                                {bill.paymentType}
+                              </Badge>
+                            </div>
+                            <span className="text-sm text-gray-600 dark:text-gray-400">
+                              Fornecedor: {bill.supplierName}
+                            </span>
+                          </div>
                           <div className="flex flex-wrap items-center gap-2 md:gap-4">
                             <Badge variant="secondary" className="bg-[#eaf5fd] text-[#009EE3] dark:bg-blue-900 dark:text-blue-100">
+                              <DollarSign className="h-3 w-3 mr-1" />
                               R$ {bill.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </Badge>
                             <Badge variant="secondary" className="bg-[#eaf5fd] text-[#009EE3] dark:bg-blue-900 dark:text-blue-100">
-                              <Calendar className="h-3 w-3 mr-1" />
-                              {new Date(bill.date).toLocaleDateString('pt-BR')}
+                              <CalendarIcon className="h-3 w-3 mr-1" />
+                              {new Date(bill.date).toLocaleDateString('pt-BR')} {bill.time}
                             </Badge>
                             <Badge variant="secondary" className="bg-[#eaf5fd] text-[#009EE3] dark:bg-blue-900 dark:text-blue-100">
                               <Tag className="h-3 w-3 mr-1" />
                               {bill.category}
+                            </Badge>
+                            <Badge variant="secondary" className="bg-[#eaf5fd] text-[#009EE3] dark:bg-blue-900 dark:text-blue-100">
+                              {bill.paymentMethod}
                             </Badge>
                             <Button variant="ghost" size="icon" onClick={() => editBill(bill._id)}>
                               <Edit2 className="h-4 w-4 text-[#009EE3]" />

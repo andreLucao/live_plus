@@ -52,8 +52,7 @@ const createNavigationItems = (tenant) => [
       { 
         icon: <Package size={20} />, 
         label: "Gestão de Estoque", 
-        isLocked: true,
-        secondaryIcon: <Lock size={16} className="ml-2" />
+        path: `/${tenant}/stock`
       },
       { 
         icon: <CircleUserRound size={20} />, 

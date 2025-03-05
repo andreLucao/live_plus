@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
-import { Plus, Trash2, Edit2, Save, X, User, Calendar, Tag, AlertCircle, MessageCircle } from "lucide-react"
+import { Plus, Trash2, Edit2, Save, X, User, Calendar, Tag, AlertCircle, MessageCircle, List, Grid } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -19,6 +19,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import Sidebar from "@/components/Sidebar"
+import CalendarView from './CalendarView'
 
 export default function AppointmentManager() {
   const [appointments, setAppointments] = useState([])
@@ -40,6 +41,7 @@ export default function AppointmentManager() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [itemToDelete, setItemToDelete] = useState(null)
   const {tenant} = useParams();
+  const [viewMode, setViewMode] = useState('list')
 
   const services = [
     "Consulta Médica",
@@ -169,70 +171,100 @@ export default function AppointmentManager() {
             {/* Header */}
             <div className="flex justify-between items-center mb-8">
               <h1 className="text-2xl font-bold text-gray-900">Gestão de Agendamentos</h1>
-              <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-                <DialogTrigger asChild>
-                  <Button className="bg-[#009EE3] hover:bg-[#0080B7]">
-                    <Plus className="mr-2 h-4 w-4" /> Novo Agendamento
+              <div className="flex gap-4">
+                <div className="flex rounded-md shadow-sm" role="group">
+                  <Button
+                    variant={viewMode === 'list' ? 'default' : 'outline'}
+                    onClick={() => setViewMode('list')}
+                    className="rounded-r-none"
+                    style={{
+                      backgroundColor: viewMode === 'list' ? '#009EE3' : 'white',
+                      color: viewMode === 'list' ? 'white' : '#009EE3',
+                      borderColor: '#009EE3'
+                    }}
+                  >
+                    <List className="h-4 w-4 mr-2" />
+                    Lista
                   </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Novo Agendamento</DialogTitle>
-                  </DialogHeader>
-                  <form onSubmit={addAppointment} className="space-y-4">
-                    <div>
-                      <Label htmlFor="patient">Paciente</Label>
-                      <Input
-                        id="patient"
-                        required
-                        value={newAppointment.patient}
-                        onChange={(e) => setNewAppointment({ ...newAppointment, patient: e.target.value })}
-                        placeholder="Nome do paciente"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="professional">Profissional</Label>
-                      <Input
-                        id="professional"
-                        required
-                        value={newAppointment.professional}
-                        onChange={(e) => setNewAppointment({ ...newAppointment, professional: e.target.value })}
-                        placeholder="Nome do profissional"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="service">Serviço</Label>
-                      <Select
-                        required
-                        value={newAppointment.service}
-                        onValueChange={(value) => setNewAppointment({ ...newAppointment, service: value })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o serviço" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {services.map((service) => (
-                            <SelectItem key={service} value={service}>
-                              {service}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="date">Data</Label>
-                      <Input
-                        id="date"
-                        required
-                        type="datetime-local"
-                        value={newAppointment.date}
-                        onChange={(e) => setNewAppointment({ ...newAppointment, date: e.target.value })}
-                      />
-                    </div>
-                    <Button type="submit" className="w-full bg-[#009EE3] hover:bg-[#0080B7]">Agendar</Button>
-                  </form>
-                </DialogContent>
-              </Dialog>
+                  <Button
+                    variant={viewMode === 'calendar' ? 'default' : 'outline'}
+                    onClick={() => setViewMode('calendar')}
+                    className="rounded-l-none"
+                    style={{
+                      backgroundColor: viewMode === 'calendar' ? '#009EE3' : 'white',
+                      color: viewMode === 'calendar' ? 'white' : '#009EE3',
+                      borderColor: '#009EE3'
+                    }}
+                  >
+                    <Grid className="h-4 w-4 mr-2" />
+                    Calendário
+                  </Button>
+                </div>
+                <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+                  <DialogTrigger asChild>
+                    <Button className="bg-[#009EE3] hover:bg-[#0080B7]">
+                      <Plus className="mr-2 h-4 w-4" /> Novo Agendamento
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Novo Agendamento</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={addAppointment} className="space-y-4">
+                      <div>
+                        <Label htmlFor="patient">Paciente</Label>
+                        <Input
+                          id="patient"
+                          required
+                          value={newAppointment.patient}
+                          onChange={(e) => setNewAppointment({ ...newAppointment, patient: e.target.value })}
+                          placeholder="Nome do paciente"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="professional">Profissional</Label>
+                        <Input
+                          id="professional"
+                          required
+                          value={newAppointment.professional}
+                          onChange={(e) => setNewAppointment({ ...newAppointment, professional: e.target.value })}
+                          placeholder="Nome do profissional"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="service">Serviço</Label>
+                        <Select
+                          required
+                          value={newAppointment.service}
+                          onValueChange={(value) => setNewAppointment({ ...newAppointment, service: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o serviço" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {services.map((service) => (
+                              <SelectItem key={service} value={service}>
+                                {service}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label htmlFor="date">Data</Label>
+                        <Input
+                          id="date"
+                          required
+                          type="datetime-local"
+                          value={newAppointment.date}
+                          onChange={(e) => setNewAppointment({ ...newAppointment, date: e.target.value })}
+                        />
+                      </div>
+                      <Button type="submit" className="w-full bg-[#009EE3] hover:bg-[#0080B7]">Agendar</Button>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </div>
             </div>
 
             {/* Error Alert */}
@@ -243,67 +275,73 @@ export default function AppointmentManager() {
               </Alert>
             )}
 
-            {/* Filters */}
-            <div className="flex flex-wrap gap-4 mb-6">
-              <div className="w-full md:w-auto">
-                <Label>Profissional</Label>
-                <Select value={professionalFilter} onValueChange={setProfessionalFilter}>
-                  <SelectTrigger className="w-full md:w-[200px]">
-                    <SelectValue placeholder="Filtrar por profissional" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    {professionals.map((prof) => (
-                      <SelectItem key={prof} value={prof}>{prof}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="w-full md:w-auto">
-                <Label>Período</Label>
-                <div className="flex gap-2">
-                  <Input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full md:w-auto"
-                  />
-                  <Input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full md:w-auto"
-                  />
+            {viewMode === 'list' ? (
+              <>
+                {/* Filters */}
+                <div className="flex flex-wrap gap-4 mb-6">
+                  <div className="w-full md:w-auto">
+                    <Label>Profissional</Label>
+                    <Select value={professionalFilter} onValueChange={setProfessionalFilter}>
+                      <SelectTrigger className="w-full md:w-[200px]">
+                        <SelectValue placeholder="Filtrar por profissional" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos</SelectItem>
+                        {professionals.map((prof) => (
+                          <SelectItem key={prof} value={prof}>{prof}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="w-full md:w-auto">
+                    <Label>Período</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        className="w-full md:w-auto"
+                      />
+                      <Input
+                        type="date"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        className="w-full md:w-auto"
+                      />
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
 
-            {/* Tabs and Content */}
-            <Tabs defaultValue="all" value={currentTab} onValueChange={setCurrentTab}>
-              <TabsList>
-                <TabsTrigger value="all">Todos</TabsTrigger>
-                <TabsTrigger value="Pending">Pendentes</TabsTrigger>
-                <TabsTrigger value="Confirmed">Confirmados</TabsTrigger>
-                <TabsTrigger value="Canceled">Cancelados</TabsTrigger>
-              </TabsList>
+                {/* Tabs and Content */}
+                <Tabs defaultValue="all" value={currentTab} onValueChange={setCurrentTab}>
+                  <TabsList>
+                    <TabsTrigger value="all">Todos</TabsTrigger>
+                    <TabsTrigger value="Pending">Pendentes</TabsTrigger>
+                    <TabsTrigger value="Confirmed">Confirmados</TabsTrigger>
+                    <TabsTrigger value="Canceled">Cancelados</TabsTrigger>
+                  </TabsList>
 
-              <TabsContent value="all" className="mt-6">
-                <AppointmentsList
-                  appointments={filteredAppointments}
-                  onStatusChange={updateStatus}
-                  onDelete={handleDeleteClick}
-                />
-              </TabsContent>
-              {["Pending", "Confirmed", "Canceled"].map((status) => (
-                <TabsContent key={status} value={status} className="mt-6">
-                  <AppointmentsList
-                    appointments={filteredAppointments}
-                    onStatusChange={updateStatus}
-                    onDelete={handleDeleteClick}
-                  />
-                </TabsContent>
-              ))}
-            </Tabs>
+                  <TabsContent value="all" className="mt-6">
+                    <AppointmentsList
+                      appointments={filteredAppointments}
+                      onStatusChange={updateStatus}
+                      onDelete={handleDeleteClick}
+                    />
+                  </TabsContent>
+                  {["Pending", "Confirmed", "Canceled"].map((status) => (
+                    <TabsContent key={status} value={status} className="mt-6">
+                      <AppointmentsList
+                        appointments={filteredAppointments}
+                        onStatusChange={updateStatus}
+                        onDelete={handleDeleteClick}
+                      />
+                    </TabsContent>
+                  ))}
+                </Tabs>
+              </>
+            ) : (
+              <CalendarView appointments={appointments} />
+            )}
           </div>
         </div>
       </main>

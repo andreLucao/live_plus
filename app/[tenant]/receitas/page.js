@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
-import { Plus, Trash2, Edit2, Save, X, DollarSign, Calendar, Tag, AlertCircle, PiggyBank } from "lucide-react"
+import { Plus, Trash2, Edit2, Save, X, DollarSign, Calendar as CalendarIcon, Tag, AlertCircle, PiggyBank } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -12,7 +12,9 @@ import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import Sidebar from "@/components/Sidebar"
-
+import { cn } from "@/lib/utils"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Calendar } from "@/components/ui/calendar"
 
 import {
   Dialog,
@@ -24,7 +26,16 @@ import {
 
 export default function HospitalIncomeManager() {
   const [incomes, setIncomes] = useState([])
-  const [newIncome, setNewIncome] = useState({ name: "", amount: "", date: "", category: "" })
+  const [newIncome, setNewIncome] = useState({ 
+    name: "", 
+    patientName: "", 
+    amount: "", 
+    date: "", 
+    time: "", 
+    category: "",
+    paymentType: "PF",
+    paymentMethod: ""
+  })
   const [monthFilter, setMonthFilter] = useState("all")
   const [categoryFilter, setCategoryFilter] = useState("all")
   const [editingId, setEditingId] = useState(null)
@@ -39,6 +50,7 @@ export default function HospitalIncomeManager() {
   const [nameFilter, setNameFilter] = useState("")
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
+  const [revenueType, setRevenueType] = useState("PF")
   const { tenant } = useParams()
 
   useEffect(() => {
@@ -77,13 +89,24 @@ export default function HospitalIncomeManager() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             ...newIncome,
-            amount: Number.parseFloat(newIncome.amount)
+            amount: Number.parseFloat(newIncome.amount),
+            paymentType: revenueType
           }),
         })
 
         if (!response.ok) throw new Error('Failed to add income')
         await fetchIncomes()
-        setNewIncome({ name: "", amount: "", date: "", category: "" })
+        setNewIncome({ 
+          name: "", 
+          patientName: "", 
+          amount: "", 
+          date: "", 
+          time: "", 
+          category: "",
+          paymentType: "PF",
+          paymentMethod: ""
+        })
+        setRevenueType("PF")
         setIsModalOpen(false)
         setError("")
       } catch (error) {
@@ -127,9 +150,13 @@ export default function HospitalIncomeManager() {
     const incomeToEdit = incomes.find(income => income._id === id)
     setNewIncome({
       name: incomeToEdit.name,
+      patientName: incomeToEdit.patientName || "",
       amount: incomeToEdit.amount.toString(),
       date: new Date(incomeToEdit.date).toISOString().split('T')[0],
-      category: incomeToEdit.category
+      time: incomeToEdit.time || "",
+      category: incomeToEdit.category,
+      paymentType: incomeToEdit.paymentType || "PF",
+      paymentMethod: incomeToEdit.paymentMethod || ""
     })
     setEditingId(id)
   }
@@ -149,7 +176,16 @@ export default function HospitalIncomeManager() {
       if (!response.ok) throw new Error('Failed to update income')
       await fetchIncomes()
       setEditingId(null)
-      setNewIncome({ name: "", amount: "", date: "", category: "" })
+      setNewIncome({ 
+        name: "", 
+        patientName: "", 
+        amount: "", 
+        date: "", 
+        time: "", 
+        category: "",
+        paymentType: "PF",
+        paymentMethod: ""
+      })
       setError("")
     } catch (error) {
       console.error('Error updating income:', error)
@@ -159,7 +195,16 @@ export default function HospitalIncomeManager() {
 
   const cancelEdit = () => {
     setEditingId(null)
-    setNewIncome({ name: "", amount: "", date: "", category: "" })
+    setNewIncome({ 
+      name: "", 
+      patientName: "", 
+      amount: "", 
+      date: "", 
+      time: "", 
+      category: "",
+      paymentType: "PF",
+      paymentMethod: ""
+    })
   }
 
   const filterData = (data) => {
@@ -245,57 +290,121 @@ export default function HospitalIncomeManager() {
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
-                      <DialogTitle>Adicionar Nova Receita</DialogTitle>
+                      <DialogTitle className="text-2xl font-bold">Receitas</DialogTitle>
                     </DialogHeader>
                     <form onSubmit={addIncome} className="space-y-4">
                       <div className="space-y-4">
-                        <div>
-                          <Label htmlFor="incomeName">Nome da Receita</Label>
+                        <div className="space-y-2">
+                          <Label htmlFor="doctor-name-revenue">Nome do Médico</Label>
                           <Input
-                            id="incomeName"
+                            id="doctor-name-revenue"
                             value={newIncome.name}
                             onChange={(e) => setNewIncome({ ...newIncome, name: e.target.value })}
-                            placeholder="Digite o nome da receita"
+                            placeholder="Digite o nome do médico"
                           />
                         </div>
-                        <div>
-                          <Label htmlFor="incomeAmount">Valor</Label>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="patient-name">Nome do Paciente</Label>
                           <Input
-                            id="incomeAmount"
-                            type="number"
-                            value={newIncome.amount}
-                            onChange={(e) => setNewIncome({ ...newIncome, amount: e.target.value })}
-                            placeholder="Digite o valor"
-                            step="0.01"
+                            id="patient-name"
+                            value={newIncome.patientName}
+                            onChange={(e) => setNewIncome({ ...newIncome, patientName: e.target.value })}
+                            placeholder="Digite o nome do paciente"
                           />
                         </div>
-                        <div>
-                          <Label htmlFor="incomeDate">Data</Label>
-                          <Input
-                            id="incomeDate"
-                            type="date"
-                            value={newIncome.date}
-                            onChange={(e) => setNewIncome({ ...newIncome, date: e.target.value })}
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="incomeCategory">Categoria</Label>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="revenue-category">Categoria</Label>
                           <Select value={newIncome.category} onValueChange={(value) => setNewIncome({ ...newIncome, category: value })}>
                             <SelectTrigger>
                               <SelectValue placeholder="Selecione a categoria" />
                             </SelectTrigger>
                             <SelectContent>
-                              {categories.map((category) => (
-                                <SelectItem key={category} value={category}>
-                                  {category}
-                                </SelectItem>
-                              ))}
+                              <SelectItem value="consulta">Consulta</SelectItem>
+                              <SelectItem value="procedimento">Procedimento</SelectItem>
+                              <SelectItem value="exame">Exame</SelectItem>
+                              <SelectItem value="retorno">Retorno</SelectItem>
+                              <SelectItem value="cirurgia">Cirurgia</SelectItem>
+                              <SelectItem value="telemedicina">Telemedicina</SelectItem>
+                              <SelectItem value="avaliacao">Avaliação</SelectItem>
+                              <SelectItem value="outros">Outros</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Tipo de Recebimento</Label>
+                          <div className="flex gap-4">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className={cn("flex-1", revenueType === "PF" && "bg-yellow-500 text-white hover:bg-yellow-600")}
+                              onClick={() => setRevenueType("PF")}
+                            >
+                              PF
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className={cn("flex-1", revenueType === "PJ" && "bg-yellow-500 text-white hover:bg-yellow-600")}
+                              onClick={() => setRevenueType("PJ")}
+                            >
+                              PJ
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Data e Hora</Label>
+                          <div className="flex gap-4">
+                            <Input
+                              type="date"
+                              className="w-full"
+                              value={newIncome.date}
+                              onChange={(e) => setNewIncome({ ...newIncome, date: e.target.value })}
+                            />
+                            <Input 
+                              type="time" 
+                              className="w-[140px]"
+                              value={newIncome.time}
+                              onChange={(e) => setNewIncome({ ...newIncome, time: e.target.value })}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="value-revenue">Valor</Label>
+                          <Input
+                            id="value-revenue"
+                            type="number"
+                            value={newIncome.amount}
+                            onChange={(e) => setNewIncome({ ...newIncome, amount: e.target.value })}
+                            placeholder="R$ 0,00"
+                            step="0.01"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="payment-method-revenue">Modalidade de Pagamento</Label>
+                          <Select 
+                            value={newIncome.paymentMethod} 
+                            onValueChange={(value) => setNewIncome({ ...newIncome, paymentMethod: value })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione a modalidade" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="pix">PIX</SelectItem>
+                              <SelectItem value="card">Cartão</SelectItem>
+                              <SelectItem value="money">Dinheiro</SelectItem>
+                              <SelectItem value="transfer">Transferência</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
                       </div>
                       <Button type="submit" className="w-full bg-[#009EE3] hover:bg-[#0080B7] text-white">
-                        Adicionar Receita
+                        Confirmar Recebimento
                       </Button>
                     </form>
                   </DialogContent>
@@ -416,20 +525,34 @@ export default function HospitalIncomeManager() {
                         </div>
                       ) : (
                         <>
-                          <span className="font-medium text-gray-800 dark:text-gray-200 break-all">
-                            {income.name}
-                          </span>
+                          <div className="flex flex-col gap-2 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-gray-800 dark:text-gray-200">
+                                {income.name}
+                              </span>
+                              <Badge variant="outline" className="text-xs">
+                                {income.paymentType}
+                              </Badge>
+                            </div>
+                            <span className="text-sm text-gray-600 dark:text-gray-400">
+                              Paciente: {income.patientName}
+                            </span>
+                          </div>
                           <div className="flex flex-wrap items-center gap-2 md:gap-4">
                             <Badge variant="secondary" className="bg-[#eaf5fd] text-[#009EE3] dark:bg-blue-900 dark:text-blue-100">
+                              <DollarSign className="h-3 w-3 mr-1" />
                               R$ {income.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </Badge>
                             <Badge variant="secondary" className="bg-[#eaf5fd] text-[#009EE3] dark:bg-blue-900 dark:text-blue-100">
-                              <Calendar className="h-3 w-3 mr-1" />
-                              {new Date(income.date).toLocaleDateString('pt-br')}
+                              <CalendarIcon className="h-3 w-3 mr-1" />
+                              {new Date(income.date).toLocaleDateString('pt-br')} {income.time}
                             </Badge>
                             <Badge variant="secondary" className="bg-[#eaf5fd] text-[#009EE3] dark:bg-blue-900 dark:text-blue-100">
                               <Tag className="h-3 w-3 mr-1" />
                               {income.category}
+                            </Badge>
+                            <Badge variant="secondary" className="bg-[#eaf5fd] text-[#009EE3] dark:bg-blue-900 dark:text-blue-100">
+                              {income.paymentMethod}
                             </Badge>
                             <Button variant="ghost" size="icon" onClick={() => editIncome(income._id)}>
                               <Edit2 className="h-4 w-4 text-[#009EE3]" />
@@ -495,5 +618,3 @@ export default function HospitalIncomeManager() {
     </div>
   )
 }
-
-                          
