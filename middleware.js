@@ -34,6 +34,13 @@ export async function middleware(request) {
       const secret = new TextEncoder().encode(JWT_SECRET);
       const { payload } = await jwtVerify(token, secret);
       
+      // Check if the tenant in the token matches the current tenant path
+      if (payload.tenantPath && payload.tenantPath !== tenant) {
+        console.log(`Tenant mismatch: Token tenant=${payload.tenantPath}, URL tenant=${tenant}`);
+        // Tenant mismatch, redirect to login for the current tenant
+        return NextResponse.redirect(new URL(`/${tenant}/login`, request.url));
+      }
+      
       // Add debug logging
       console.log('Authenticated user:', payload);
       
