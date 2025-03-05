@@ -6,6 +6,7 @@ import { connectDB, getTenantModel } from '@/lib/mongodb';
 
 const EMAIL_SECRET = process.env.EMAIL_SECRET || 'your-secret-key';
 const JWT_SECRET = process.env.JWT_SECRET || 'your-jwt-secret';
+const ROLE_EXPIRY_TIME = 60 * 60; // 1 hour in seconds for role validity
 
 export async function GET(request) {
   try {
@@ -128,14 +129,16 @@ export async function GET(request) {
       token: token.substring(0, 10) + '...'
     });
     
-    // Create a session token
+    // Create a session token with role expiry
     try {
+      const now = Math.floor(Date.now() / 1000);
       const secret = new TextEncoder().encode(JWT_SECRET);
       const sessionToken = await new SignJWT({ 
         email: decoded.email,
         userId: user._id.toString(),
         tenantPath: user.tenantPath,
         role: user.role,
+        roleExpiry: now + ROLE_EXPIRY_TIME, // Add role expiry timestamp
         authenticated: true 
       })
         .setProtectedHeader({ alg: 'HS256' })
@@ -143,8 +146,8 @@ export async function GET(request) {
         .sign(secret);
 
       // Set the session cookie
-      const cookieStore = await cookies();
-      await cookieStore.set('auth_token', sessionToken, {
+      const cookieStore = cookies();
+      cookieStore.set('auth_token', sessionToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
@@ -173,4 +176,24 @@ export async function GET(request) {
     
     return NextResponse.redirect(new URL(errorUrl));
   }
+}
+
+// Helper function to create session tokens (for reuse in other parts of the app)
+export async function createSessionToken(user) {
+  const now = Math.floor(Date.now() / 1000);
+  const secret = new TextEncoder().encode(JWT_SECRET);
+  
+  const sessionToken = await new SignJWT({ 
+    email: user.email,
+    userId: user.userId || user._id.toString(),
+    tenantPath: user.tenantPath,
+    role: user.role,
+    roleExpiry: now + ROLE_EXPIRY_TIME, // Role expires in 1 hour
+    authenticated: true 
+  })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setExpirationTime('7d') // Full token expires in 7 days
+    .sign(secret);
+
+  return sessionToken;
 }

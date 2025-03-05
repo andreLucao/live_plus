@@ -1,9 +1,7 @@
-//financeiro/page.js
-
 "use client"
 
 import { useState, useEffect } from "react"
-import { useParams } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Overview } from "@/components/overview"
@@ -12,11 +10,12 @@ import { FinancialMetrics } from "@/components/financial-metrics"
 import { ReconciliationTable } from "@/components/reconciliation-table"
 import { CustomerMetrics } from "@/components/customer-metrics"
 import { CashFlow } from "@/components/cash-flow"
-import { CalendarDays, AlertCircle, TrendingUp, TrendingDown } from "lucide-react"
+import { CalendarDays, AlertCircle, TrendingUp, TrendingDown, ShieldAlert } from "lucide-react"
 import Sidebar from "@/components/Sidebar"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
-export default function HospitalDashboardComponent() {
+// Dashboard component (unchanged)
+function FinancialDashboard() {
   const [incomes, setIncomes] = useState([])
   const [bills, setBills] = useState([])
   const [lastMonthIncome, setLastMonthIncome] = useState(0)
@@ -278,3 +277,96 @@ export default function HospitalDashboardComponent() {
     </div>
   )
 }
+
+// Role protection wrapper
+function RoleProtectedDashboard() {
+  const [userRole, setUserRole] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
+  const router = useRouter()
+  const { tenant } = useParams()
+
+  useEffect(() => {
+    const verifyRole = async () => {
+      try {
+        const response = await fetch(`/api/${tenant}/auth/verify-role`)
+        
+        if (!response.ok) {
+          // If 401 or 403, redirect to login
+          if (response.status === 401 || response.status === 403) {
+            router.push(`/${tenant}/login`)
+            return
+          }
+          throw new Error("Failed to verify role")
+        }
+
+        const data = await response.json()
+        setUserRole(data.role)
+
+        // Redirect if not owner
+        if (data.role !== "owner") {
+          router.push(`/${tenant}/unauthorized`)
+        }
+      } catch (error) {
+        console.error("Role verification error:", error)
+        setError("Falha ao verificar permissões. Por favor, tente novamente.")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    verifyRole()
+  }, [router, tenant])
+
+  if (loading) {
+    return (
+      <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
+        <Sidebar />
+        <main className="flex-1 overflow-y-auto">
+          <div className="flex justify-center items-center h-full">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
+        <Sidebar />
+        <main className="flex-1 overflow-y-auto p-8">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Erro de Autorização</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        </main>
+      </div>
+    )
+  }
+
+  // If role is not owner, show unauthorized message (fallback in case redirect fails)
+  if (userRole !== "owner") {
+    return (
+      <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
+        <Sidebar />
+        <main className="flex-1 overflow-y-auto p-8">
+          <Alert variant="destructive">
+            <ShieldAlert className="h-4 w-4" />
+            <AlertTitle>Acesso Restrito</AlertTitle>
+            <AlertDescription>
+              Você não tem permissão para acessar esta página. Esta seção é restrita para usuários com permissão de proprietário.
+            </AlertDescription>
+          </Alert>
+        </main>
+      </div>
+    )
+  }
+
+  // If role is owner, render the dashboard
+  return <FinancialDashboard />
+}
+
+// Export the protected dashboard as default
+export default RoleProtectedDashboard
