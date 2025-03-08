@@ -146,7 +146,7 @@ export async function GET(request) {
         .sign(secret);
 
       // Set the session cookie
-      const cookieStore = cookies();
+      const cookieStore = await cookies();
       cookieStore.set('auth_token', sessionToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',

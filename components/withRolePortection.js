@@ -1,77 +1,112 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
+import { ShieldAlert } from 'lucide-react';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import Sidebar from '@/components/Sidebar';
 
 /**
- * Higher-order component to protect routes based on user roles
- * @param {React.Component} Component - The component to wrap with role protection
- * @param {string[]} allowedRoles - Array of roles allowed to access this component
- * @param {Object} options - Additional options
- * @param {string} options.redirectTo - Path to redirect unauthorized users (defaults to /unauthorized)
- * @param {React.Component} options.LoadingComponent - Custom loading component
- * @returns {React.Component} Protected component
+ * Client-side component for role-based protection
+ * To be used in page components that need role protection
  */
-export default function withRoleProtection(
-  Component, 
-  allowedRoles, 
-  options = { redirectTo: '/unauthorized' }
-) {
-  return function ProtectedRoute(props) {
-    const router = useRouter();
-    const [loading, setLoading] = useState(true);
-    const [authorized, setAuthorized] = useState(false);
-    
-    const { redirectTo, LoadingComponent } = options;
-    
-    useEffect(() => {
-      const checkAuthorization = async () => {
-        try {
-          // Get tenant from URL
-          const pathParts = window.location.pathname.split('/').filter(Boolean);
-          const tenant = pathParts[0];
-          
-          if (!tenant) {
-            throw new Error('No tenant found in URL');
+export default function RoleProtection({ 
+  children, 
+  allowedRoles = ['owner'],
+  fallback = 'redirect' // can be 'redirect' or 'message'
+}) {
+  const router = useRouter();
+  const { tenant } = useParams();
+  const [loading, setLoading] = useState(true);
+  const [authorized, setAuthorized] = useState(false);
+  const [error, setError] = useState("");
+  
+  useEffect(() => {
+    const checkAuthorization = async () => {
+      try {
+        if (!tenant) {
+          throw new Error("No tenant found in URL");
+        }
+        
+        const response = await fetch(`/api/${tenant}/auth/verify-role`);
+        if (!response.ok) {
+          if (response.status === 401) {
+            // Not authenticated, redirect to login
+            router.push(`/${tenant}/login`);
+            return;
           }
+          throw new Error(`Authorization failed: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        
+        if (!data.role || !allowedRoles.includes(data.role)) {
+          // User doesn't have required role
+          console.log(`Access denied. User role: ${data.role}, Required roles: ${allowedRoles.join(', ')}`);
           
-          const response = await fetch(`/${tenant}/api/auth/verify-role`);
-          if (!response.ok) {
-            throw new Error('Not authorized');
-          }
-          
-          const data = await response.json();
-          
-          if (!data.role || !allowedRoles.includes(data.role)) {
-            router.push(redirectTo || `/${tenant}/unauthorized`);
+          if (fallback === 'redirect') {
+            router.push(`/${tenant}/unauthorized`);
             return;
           }
           
+          setError(`Esta página requer permissão de ${allowedRoles.join(' ou ')}.`);
+          setAuthorized(false);
+        } else {
           setAuthorized(true);
-        } catch (error) {
-          console.error('Authorization check failed:', error);
-          
-          // Try to get tenant from URL for redirect
-          const pathParts = window.location.pathname.split('/').filter(Boolean);
-          const tenant = pathParts[0];
-          
-          router.push(tenant ? `/${tenant}/login` : '/');
-        } finally {
-          setLoading(false);
         }
-      };
-      
-      checkAuthorization();
-    }, [router, redirectTo]);
+        
+      } catch (error) {
+        console.error("Role verification error:", error);
+        setError("Falha ao verificar permissões. Por favor, tente novamente.");
+        
+        if (fallback === 'redirect') {
+          router.push(`/${tenant}/login`);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
     
-    if (loading) {
-      return LoadingComponent ? <LoadingComponent /> : <div>Loading...</div>;
-    }
-    
-    if (!authorized) {
-      return null;
-    }
-    
-    return <Component {...props} />;
-  };
+    checkAuthorization();
+  }, [router, tenant, allowedRoles, fallback]);
+  
+  // Loading state
+  if (loading) {
+    return (
+      <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
+        <Sidebar />
+        <main className="flex-1 overflow-y-auto">
+          <div className="flex justify-center items-center h-full">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+  
+  // If not authorized and showing in-place message
+  if (!authorized && fallback === 'message') {
+    return (
+      <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
+        <Sidebar />
+        <main className="flex-1 overflow-y-auto p-8">
+          <Alert variant="destructive">
+            <ShieldAlert className="h-4 w-4" />
+            <AlertTitle>Acesso Restrito</AlertTitle>
+            <AlertDescription>
+              {error || "Você não tem permissão para acessar esta página."}
+            </AlertDescription>
+          </Alert>
+        </main>
+      </div>
+    );
+  }
+  
+  // If authorized, render children
+  if (authorized) {
+    return children;
+  }
+  
+  // If we're here, we're redirecting
+  return null;
 }
