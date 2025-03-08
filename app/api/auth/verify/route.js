@@ -155,7 +155,7 @@ export async function GET(request) {
         path: '/',
       });
 
-      return NextResponse.redirect(new URL(`${tenantUrl}/financeiro`));
+      return NextResponse.redirect(new URL(`${tenantUrl}`));
     } catch (error) {
       console.error('Session creation failed:', error);
       return NextResponse.redirect(new URL(`${tenantUrl}/?error=session-error`));
