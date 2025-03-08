@@ -8,8 +8,9 @@ import { createSessionToken } from '@/app/api/auth/verify/route';
 const JWT_SECRET = process.env.JWT_SECRET || 'your-jwt-secret';
 
 export async function GET(request, { params }) {
-  const { tenant } = params;
-  const cookieStore = cookies();
+  const id = await params;
+  const tenant = id.tenant;
+  const cookieStore = await cookies();
   const token = cookieStore.get('auth_token')?.value;
   
   if (!token) {
