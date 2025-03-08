@@ -24,9 +24,23 @@ import {
   Lock,
   CircleUserRound,
   BookUser
-  } from 'lucide-react';
-const createNavigationItems = (tenant) => [
-  {
+} from 'lucide-react';
+
+// Function to create navigation items based on user role
+const createNavigationItems = (tenant, userRole) => {
+  // Default items for all users (doctor, user)
+  const medicalItems = {
+    icon: <BriefcaseMedical size={20} />,
+    label: "Médico",
+    subItems: [
+      { icon: <Calendar size={20} />, label: "Agendamentos", path: `/${tenant}/appointments` },
+      { icon: <Stethoscope size={20} />, label: "Gestão de Procedimentos", path: `/${tenant}/procedures` },
+      { icon: <BookUser size={20} />, label: "Pacientes", path: `/${tenant}/patients` }
+    ]
+  };
+
+  // Items only for admin and owner
+  const financialItems = {
     icon: <PiggyBank size={20} />, 
     label: "Financeiro",
     subItems: [
@@ -34,18 +48,9 @@ const createNavigationItems = (tenant) => [
       { icon: <FileText size={20} />, label: "Despesas", path: `/${tenant}/despesas` },
       { icon: <PiggyBank size={20} />, label: "Receitas", path: `/${tenant}/receitas` }
     ]
-  },
-  {
-    icon: <BriefcaseMedical size={20} />,
-    label: "Médico",
-    subItems: [
-      { icon: <Calendar size={20} />, label: "Agendamentos", path: `/${tenant}/appointments` },
-      { icon: <Stethoscope size={20} />, label: "Gestão de Procedimentos", path: `/${tenant}/procedures` },
-      { icon: <BookUser size={20} />, label: "Pacientes", path: `/${tenant}/patients` }
+  };
 
-    ]
-  },
-  {
+  const managementItems = {
     icon: <ClipboardList size={20} />,
     label: "Gestão",
     subItems: [
@@ -57,12 +62,19 @@ const createNavigationItems = (tenant) => [
       { 
         icon: <CircleUserRound size={20} />, 
         label: "Gestão de Usuários", 
-        isLocked: true,
-        secondaryIcon: <Lock size={16} className="ml-2" />
+        path: `/${tenant}/users`
       }
     ]
-  },
-];
+  };
+
+  // Return different navigation items based on role
+  if (userRole === 'admin' || userRole === 'owner') {
+    return [financialItems, medicalItems, managementItems];
+  } else {
+    // For user and doctor roles, only show medical section
+    return [medicalItems];
+  }
+};
 
 export default function Sidebar({ user, onLogout }) {
   const router = useRouter();
@@ -86,8 +98,39 @@ export default function Sidebar({ user, onLogout }) {
     return {};
   });
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [userRole, setUserRole] = useState(user?.role || 'user');
+  const [navigationItems, setNavigationItems] = useState([]);
 
-  const navigationItems = createNavigationItems(tenant);
+  // Fetch user role if not provided in props
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      if (user?.role) {
+        setUserRole(user.role);
+        return;
+      }
+      
+      try {
+        const response = await fetch(`/api/${tenant}/auth/verify-role`);
+        if (response.ok) {
+          const data = await response.json();
+          setUserRole(data.role);
+        }
+      } catch (error) {
+        console.error('Failed to fetch user role:', error);
+      }
+    };
+
+    if (tenant) {
+      fetchUserRole();
+    }
+  }, [tenant, user]);
+
+  // Update navigation items when role changes
+  useEffect(() => {
+    if (tenant) {
+      setNavigationItems(createNavigationItems(tenant, userRole));
+    }
+  }, [tenant, userRole]);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -191,11 +234,16 @@ export default function Sidebar({ user, onLogout }) {
                 Live Plus
               </h2>
             </a>
-            {user?.email && (
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                {user.email}
+            <div className="flex flex-col mt-1">
+              {user?.email && (
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  {user.email}
+                </p>
+              )}
+              <p className="text-xs text-gray-500 dark:text-gray-500 capitalize">
+                Perfil: {userRole}
               </p>
-            )}
+            </div>
           </div>
           <nav className="flex-1 pt-6 px-2 space-y-2 overflow-y-auto">
             {navigationItems.map((section) => (
