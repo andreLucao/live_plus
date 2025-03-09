@@ -14,7 +14,7 @@ export async function GET(request, { params }) {
   const { searchParams } = new URL(request.url);
   const redirectTo = searchParams.get('redirect') || `/${tenant}`;
   
-  const cookieStore = await ookies();
+  const cookieStore = await cookies();
   const token = cookieStore.get('auth_token')?.value;
   
   if (!token) {

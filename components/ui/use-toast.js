@@ -1,33 +1,40 @@
-import { useToast as useToastOriginal } from "@/components/ui/toast"
+import { toast as sonnerToast } from "sonner"
 
 export const toast = {
   title: (title) => {
-    const { toast } = useToastOriginal()
-    toast({
-      title,
-    })
+    sonnerToast(title)
   },
   description: (description) => {
-    const { toast } = useToastOriginal()
-    toast({
+    sonnerToast("Notification", {
       description,
     })
   },
   error: (description) => {
-    const { toast } = useToastOriginal()
-    toast({
-      title: "Error",
+    sonnerToast.error("Error", {
       description,
-      variant: "destructive",
     })
   },
   success: (description) => {
-    const { toast } = useToastOriginal()
-    toast({
-      title: "Success",
+    sonnerToast.success("Success", {
       description,
     })
   },
 }
 
-export { useToastOriginal as useToast } 
+export const useToast = () => {
+  return {
+    toast: ({ title, description, variant, ...props }) => {
+      if (variant === "destructive") {
+        return sonnerToast.error(title, {
+          description,
+          ...props,
+        })
+      }
+      
+      return sonnerToast(title, {
+        description,
+        ...props,
+      })
+    },
+  }
+} 
