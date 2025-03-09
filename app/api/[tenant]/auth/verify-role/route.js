@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import { jwtVerify } from 'jose';
 import { connectDB, getTenantModel } from '@/lib/mongodb';
 import { NextResponse } from 'next/server';
-import { createSessionToken } from '@/app/api/auth/verify/route';
+import { createSessionToken } from '@/lib/auth-utils';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-jwt-secret';
 
