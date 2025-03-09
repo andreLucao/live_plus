@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 import { SignJWT } from 'jose';
-import { connectDB, getTenantModel } from '@/lib/mongodb';
+import { connectDB } from '@/lib/mongodb';
+import { getUserModel } from '@/lib/models/User';
 
 const EMAIL_SECRET = process.env.EMAIL_SECRET || 'your-secret-key';
 const JWT_SECRET = process.env.JWT_SECRET || 'your-jwt-secret';
@@ -90,7 +91,7 @@ export async function GET(request) {
       return NextResponse.redirect(new URL(`${tenantUrl}/?error=database-error`));
     }
 
-    const User = getTenantModel(tenantConnection, 'User');
+    const User = getUserModel(tenantConnection, 'User');
     
     // Find or create user
     let user;
