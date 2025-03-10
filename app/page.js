@@ -20,12 +20,6 @@ export default function Home() {
             Login to Your Accounts
           </Link>
           
-          <Link 
-            href="/contact" 
-            className="px-6 py-3 bg-gray-200 text-gray-800 font-medium rounded-lg hover:bg-gray-300 transition-colors"
-          >
-            Contact Us
-          </Link>
         </div>
         
         <p className="text-gray-500 text-sm">
