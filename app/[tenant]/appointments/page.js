@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
-import { Plus, Trash2, Edit2, Save, X, User, Calendar, Tag, AlertCircle, MessageCircle, List, Grid } from "lucide-react"
+import { Plus, Trash2, Edit2, Save, X, User, Calendar, Tag, AlertCircle, MessageCircle, List, Grid, Video, ExternalLink } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -18,6 +18,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import Sidebar from "@/components/Sidebar"
 import CalendarView from './CalendarView'
 
@@ -42,6 +48,9 @@ export default function AppointmentManager() {
   const [itemToDelete, setItemToDelete] = useState(null)
   const {tenant} = useParams();
   const [viewMode, setViewMode] = useState('list')
+  const [jitsiModalOpen, setJitsiModalOpen] = useState(false)
+  const [currentMeeting, setCurrentMeeting] = useState(null)
+  const [isUpdatingAll, setIsUpdatingAll] = useState(false)
 
   const services = [
     "Consulta Médica",
@@ -59,13 +68,16 @@ export default function AppointmentManager() {
 
   const fetchAppointments = async () => {
     try {
+      setIsLoading(true)
       const response = await fetch(`/api/${tenant}/appointments`)
       if (!response.ok) throw new Error('Failed to fetch appointments')
       const data = await response.json()
+      console.log('Agendamentos carregados:', data);
       setAppointments(data)
       setError("")
     } catch (error) {
-      setError("Falha ao carregar os agendamentos")
+      console.error("Erro ao carregar agendamentos:", error);
+      setError("Falha ao carregar agendamentos")
     } finally {
       setIsLoading(false)
     }
@@ -81,10 +93,21 @@ export default function AppointmentManager() {
       })
 
       if (!response.ok) throw new Error('Failed to add appointment')
+      
+      // Obter o agendamento criado com o meetingUrl
+      const createdAppointment = await response.json()
+      console.log('Agendamento criado com sucesso:', createdAppointment)
+      
+      // Verificar se o agendamento tem meetingUrl
+      if (!createdAppointment.meetingUrl) {
+        console.warn('Agendamento criado sem meetingUrl:', createdAppointment);
+      }
+      
       await fetchAppointments()
       setNewAppointment({ status: "Pending", date: "", professional: "", patient: "", service: "" })
       setIsModalOpen(false)
     } catch (error) {
+      console.error("Erro ao adicionar agendamento:", error)
       setError("Falha ao adicionar agendamento")
     }
   }
@@ -101,7 +124,26 @@ export default function AppointmentManager() {
       })
 
       if (!response.ok) throw new Error('Failed to update status')
+      
+      // Atualiza a lista de agendamentos para obter as informações atualizadas
       await fetchAppointments()
+      
+      // Se o status for alterado para confirmado, verificamos se o agendamento tem link de reunião
+      if (newStatus === 'Confirmed') {
+        const updatedAppointment = appointments.find(a => a._id === id)
+        if (updatedAppointment && !updatedAppointment.meetingUrl) {
+          // Se não tiver link, fazemos uma nova chamada para garantir que seja gerado
+          await fetch(`/api/${tenant}/appointments`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id,
+              status: newStatus
+            }),
+          })
+          await fetchAppointments()
+        }
+      }
     } catch (error) {
       setError("Falha ao atualizar status")
     }
@@ -127,6 +169,68 @@ export default function AppointmentManager() {
     }
   }
 
+  const openJitsiMeeting = (appointment) => {
+    setCurrentMeeting(appointment)
+    setJitsiModalOpen(true)
+  }
+
+  const launchJitsiMeeting = async () => {
+    try {
+      if (!currentMeeting) return;
+      
+      console.log('Iniciando reunião para agendamento:', currentMeeting);
+      
+      // Se já tiver uma URL, abre diretamente
+      if (currentMeeting.meetingUrl) {
+        console.log('Abrindo URL existente:', currentMeeting.meetingUrl);
+        window.open(currentMeeting.meetingUrl, '_blank');
+        setJitsiModalOpen(false);
+        return;
+      }
+      
+      // Se não tiver uma URL de reunião, vamos criar uma
+      // Não importa o status do agendamento
+      if (currentMeeting._id) {
+        console.log('Agendamento sem URL, criando nova:', currentMeeting._id);
+        const response = await fetch(`/api/${tenant}/appointments`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: currentMeeting._id,
+            // Não alteramos o status, apenas garantimos que a URL seja criada
+          }),
+        });
+        
+        if (response.ok) {
+          const updatedAppointment = await response.json();
+          console.log('Agendamento atualizado com URL:', updatedAppointment);
+          
+          // Atualiza o agendamento atual com o link de reunião
+          if (updatedAppointment.meetingUrl) {
+            console.log('Abrindo nova URL:', updatedAppointment.meetingUrl);
+            window.open(updatedAppointment.meetingUrl, '_blank');
+            await fetchAppointments(); // Atualiza a lista para refletir as mudanças
+            setJitsiModalOpen(false);
+            return;
+          } else {
+            console.error('Agendamento atualizado sem URL:', updatedAppointment);
+          }
+        } else {
+          console.error('Falha ao atualizar agendamento:', await response.text());
+        }
+      }
+      
+      // Se chegou aqui, é porque não conseguiu abrir a reunião
+      console.error('Não foi possível iniciar a videochamada');
+      setError("Não foi possível iniciar a videochamada. Tente novamente mais tarde.");
+    } catch (error) {
+      console.error("Erro ao iniciar reunião:", error);
+      setError("Falha ao iniciar videochamada. Tente novamente.");
+    }
+    
+    setJitsiModalOpen(false);
+  }
+
   const filterAppointments = (appointments) => {
     return appointments.filter(appointment => {
       const statusMatch = currentTab === "all" || appointment.status === currentTab
@@ -148,6 +252,29 @@ export default function AppointmentManager() {
 
   const professionals = [...new Set(appointments.map(a => a.professional))]
   const filteredAppointments = filterAppointments(appointments)
+
+  // Função para atualizar todos os agendamentos existentes
+  const updateAllAppointments = async () => {
+    try {
+      setIsUpdatingAll(true);
+      const response = await fetch(`/api/${tenant}/appointments/update-all`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) throw new Error('Failed to update all appointments');
+      
+      const result = await response.json();
+      console.log('Resultado da atualização:', result);
+      
+      await fetchAppointments();
+      setError("");
+    } catch (error) {
+      console.error("Erro ao atualizar todos os agendamentos:", error);
+      setError("Falha ao atualizar todos os agendamentos");
+    } finally {
+      setIsUpdatingAll(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -326,6 +453,7 @@ export default function AppointmentManager() {
                       appointments={filteredAppointments}
                       onStatusChange={updateStatus}
                       onDelete={handleDeleteClick}
+                      onStartMeeting={openJitsiMeeting}
                     />
                   </TabsContent>
                   {["Pending", "Confirmed", "Canceled"].map((status) => (
@@ -334,25 +462,21 @@ export default function AppointmentManager() {
                         appointments={filteredAppointments}
                         onStatusChange={updateStatus}
                         onDelete={handleDeleteClick}
+                        onStartMeeting={openJitsiMeeting}
                       />
                     </TabsContent>
                   ))}
                 </Tabs>
               </>
             ) : (
-              <CalendarView appointments={appointments} />
+              <CalendarView 
+                appointments={appointments} 
+                onStartMeeting={openJitsiMeeting}
+              />
             )}
           </div>
         </div>
       </main>
-
-      {/* Chat Button */}
-      <Button
-        className="fixed bottom-4 right-4 rounded-full w-12 h-12 p-0"
-        variant="secondary"
-      >
-        <MessageCircle className="h-6 w-6" />
-      </Button>
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
@@ -374,12 +498,67 @@ export default function AppointmentManager() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Modal de confirmação para iniciar reunião */}
+      <Dialog open={jitsiModalOpen} onOpenChange={setJitsiModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Iniciar Videochamada</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {currentMeeting && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Paciente: {currentMeeting.patient}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">
+                    Data: {new Date(currentMeeting.date).toLocaleDateString('pt-BR')} às {new Date(currentMeeting.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Tag className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Serviço: {currentMeeting.service}</span>
+                </div>
+                
+                {currentMeeting.meetingUrl && (
+                  <div className="mt-4 flex items-center gap-2">
+                    <ExternalLink className="h-4 w-4 text-blue-500" />
+                    <a 
+                      href={currentMeeting.meetingUrl} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-sm text-blue-500 hover:underline"
+                    >
+                      {currentMeeting.meetingUrl}
+                    </a>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            <div className="flex justify-end gap-2 mt-6">
+              <Button variant="outline" onClick={() => setJitsiModalOpen(false)}>
+                Cancelar
+              </Button>
+              <Button 
+                className="bg-[#009EE3] hover:bg-[#0080B7]"
+                onClick={launchJitsiMeeting}
+              >
+                <Video className="h-4 w-4 mr-1" /> Iniciar Videochamada
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
 
 // Componente de lista de agendamentos
-function AppointmentsList({ appointments, onStatusChange, onDelete }) {
+function AppointmentsList({ appointments, onStatusChange, onDelete, onStartMeeting }) {
   const getStatusColor = (status) => {
     switch (status) {
       case 'Pending': return 'bg-yellow-100 text-yellow-800'
@@ -402,57 +581,79 @@ function AppointmentsList({ appointments, onStatusChange, onDelete }) {
     <Card>
       <CardContent className="p-6">
         <div className="space-y-4">
-          {appointments.map((appointment) => (
-            <div
-              key={appointment._id}
-              className="flex flex-col md:flex-row justify-between items-start md:items-center p-4 bg-white rounded-lg border gap-4"
-            >
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <User className="h-4 w-4" />
-                  <span className="font-medium">{appointment.patient}</span>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Badge variant="outline">
-                    <Calendar className="h-3 w-3 mr-1" />
-                    {new Date(appointment.date).toLocaleString()}
-                  </Badge>
-                  <Badge variant="outline">
-                    <User className="h-3 w-3 mr-1" />
-                    {appointment.professional}
-                  </Badge>
-                  <Badge variant="outline"><Tag className="h-3 w-3 mr-1" />
-                    {appointment.service}
-                  </Badge>
-                  <Badge className={getStatusColor(appointment.status)}>
-                    {getStatusText(appointment.status)}
-                  </Badge>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Select
-                  value={appointment.status}
-                  onValueChange={(value) => onStatusChange(appointment._id, value)}
-                >
-                  <SelectTrigger className="w-[140px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Pending">Pendente</SelectItem>
-                    <SelectItem value="Confirmed">Confirmado</SelectItem>
-                    <SelectItem value="Canceled">Cancelado</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => onDelete(appointment)}
-                >
-                  <Trash2 className="h-4 w-4 text-red-500" />
-                </Button>
-              </div>
+          {appointments.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              Nenhum agendamento encontrado
             </div>
-          ))}
+          ) : (
+            appointments.map((appointment) => (
+              <div
+                key={appointment._id}
+                className="flex flex-col md:flex-row justify-between items-start md:items-center p-4 bg-white rounded-lg border gap-4"
+              >
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4" />
+                    <span className="font-medium">{appointment.patient}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="outline">
+                      <Calendar className="h-3 w-3 mr-1" />
+                      {new Date(appointment.date).toLocaleString()}
+                    </Badge>
+                    <Badge variant="outline">
+                      <User className="h-3 w-3 mr-1" />
+                      {appointment.professional}
+                    </Badge>
+                    <Badge variant="outline"><Tag className="h-3 w-3 mr-1" />
+                      {appointment.service}
+                    </Badge>
+                    <Badge className={getStatusColor(appointment.status)}>
+                      {getStatusText(appointment.status)}
+                    </Badge>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                          className="bg-[#009EE3] hover:bg-[#0080B7]"
+                          onClick={() => onStartMeeting(appointment)}
+                        >
+                          <Video className="h-4 w-4 mr-1" /> Videochamada
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Iniciar videochamada com {appointment.patient}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <Select
+                    value={appointment.status}
+                    onValueChange={(value) => onStatusChange(appointment._id, value)}
+                  >
+                    <SelectTrigger className="w-[140px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Pending">Pendente</SelectItem>
+                      <SelectItem value="Confirmed">Confirmado</SelectItem>
+                      <SelectItem value="Canceled">Cancelado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => onDelete(appointment)}
+                  >
+                    <Trash2 className="h-4 w-4 text-red-500" />
+                  </Button>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </CardContent>
     </Card>

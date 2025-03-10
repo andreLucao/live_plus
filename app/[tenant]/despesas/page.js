@@ -355,7 +355,7 @@ export default function ExpensesPage() {
                             <Button
                               type="button"
                               variant="outline"
-                              className={cn("flex-1", expenseType === "PF" && "bg-yellow-500 text-white hover:bg-yellow-600")}
+                              className={cn("flex-1", expenseType === "PF" && "bg-[#009EE3] text-white hover:bg-[#0080B7]")}
                               onClick={() => setExpenseType("PF")}
                             >
                               PF
@@ -363,7 +363,7 @@ export default function ExpensesPage() {
                             <Button
                               type="button"
                               variant="outline"
-                              className={cn("flex-1", expenseType === "PJ" && "bg-yellow-500 text-white hover:bg-yellow-600")}
+                              className={cn("flex-1", expenseType === "PJ" && "bg-[#009EE3] text-white hover:bg-[#0080B7]")}
                               onClick={() => setExpenseType("PJ")}
                             >
                               PJ

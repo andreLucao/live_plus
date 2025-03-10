@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { format, addDays, subDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, parseISO, addMonths, subMonths } from "date-fns"
 import { ptBR } from "date-fns/locale"
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-react"
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Video, ExternalLink } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
@@ -13,8 +13,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
-export default function CalendarView({ appointments = [] }) {
+export default function CalendarView({ appointments = [], onStartMeeting }) {
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [isCalendarOpen, setIsCalendarOpen] = useState(false)
   const [currentMonth, setCurrentMonth] = useState(new Date())
@@ -238,6 +244,7 @@ export default function CalendarView({ appointments = [] }) {
                       <div className="space-y-1">
                         {hourAppointments.map((appointment, index) => {
                           const statusColors = getStatusColor(appointment.status);
+                          
                           return (
                             <div 
                               key={index} 
@@ -245,14 +252,32 @@ export default function CalendarView({ appointments = [] }) {
                               style={{ 
                                 backgroundColor: statusColors.bg, 
                                 borderColor: statusColors.border,
-                                minHeight: '60px'
+                                minHeight: '60px',
+                                cursor: 'pointer' // Sempre clicável
                               }}
+                              onClick={() => onStartMeeting(appointment)}
                             >
-                              <div className="font-medium text-sm">{appointment.patient}</div>
+                              <div className="font-medium text-sm flex justify-between">
+                                <span>{appointment.patient}</span>
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="flex items-center">
+                                        <Video className="h-4 w-4 text-blue-500 ml-1" />
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Clique para iniciar videochamada</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              </div>
+                              
                               <div className="text-xs" style={{ color: '#4B5563' }}>
                                 {appointment.service} com {appointment.professional}
                               </div>
-                              <div className="flex justify-end items-center mt-1">
+                              
+                              <div className="flex justify-between items-center mt-1">
                                 <div className="text-xs px-2 py-0.5 rounded-full" style={{ 
                                   backgroundColor: statusColors.border,
                                   color: '#FFFFFF'

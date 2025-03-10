@@ -336,7 +336,7 @@ export default function HospitalIncomeManager() {
                             <Button
                               type="button"
                               variant="outline"
-                              className={cn("flex-1", revenueType === "PF" && "bg-yellow-500 text-white hover:bg-yellow-600")}
+                              className={cn("flex-1", revenueType === "PF" && "bg-[#009EE3] text-white hover:bg-[#0080B7]")}
                               onClick={() => setRevenueType("PF")}
                             >
                               PF
@@ -344,7 +344,7 @@ export default function HospitalIncomeManager() {
                             <Button
                               type="button"
                               variant="outline"
-                              className={cn("flex-1", revenueType === "PJ" && "bg-yellow-500 text-white hover:bg-yellow-600")}
+                              className={cn("flex-1", revenueType === "PJ" && "bg-[#009EE3] text-white hover:bg-[#0080B7]")}
                               onClick={() => setRevenueType("PJ")}
                             >
                               PJ
