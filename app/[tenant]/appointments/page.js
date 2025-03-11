@@ -401,15 +401,18 @@ export default function AppointmentManager() {
                           <SelectContent>
                             {doctors.length > 0 ? (
                               doctors.map((doctor) => (
-                                <SelectItem key={doctor._id} value={doctor._id}>
-                                  {doctor.name || (doctor.email ? 
-                                    doctor.email.split(/[@.]/)[0].charAt(0).toUpperCase() + 
-                                    doctor.email.split(/[@.]/)[0].slice(1) : 
-                                    doctor._id)}
-                                </SelectItem>
-                              ))
+                                // Verifica se doctor._id existe e não está vazio
+                                doctor._id ? (
+                                  <SelectItem key={doctor._id} value={doctor._id}>
+                                    {doctor.name || (doctor.email ? 
+                                      doctor.email.split(/[@.]/)[0].charAt(0).toUpperCase() + 
+                                      doctor.email.split(/[@.]/)[0].slice(1) : 
+                                      doctor._id)}
+                                  </SelectItem>
+                                ) : null
+                              )).filter(Boolean) // Remove itens nulos do array
                             ) : (
-                              <SelectItem value="" disabled>
+                              <SelectItem value="no-doctor" disabled>
                                 Nenhum médico encontrado
                               </SelectItem>
                             )}
@@ -473,13 +476,16 @@ export default function AppointmentManager() {
                       <SelectContent>
                         <SelectItem value="all">Todos</SelectItem>
                         {doctors.map((doctor) => (
-                          <SelectItem key={doctor._id} value={doctor._id}>
-                            {doctor.name || (doctor.email ? 
-                              doctor.email.split(/[@.]/)[0].charAt(0).toUpperCase() + 
-                              doctor.email.split(/[@.]/)[0].slice(1) : 
-                              doctor._id)}
-                          </SelectItem>
-                        ))}
+                          // Verifica se doctor._id existe e não está vazio
+                          doctor._id ? (
+                            <SelectItem key={doctor._id} value={doctor._id}>
+                              {doctor.name || (doctor.email ? 
+                                doctor.email.split(/[@.]/)[0].charAt(0).toUpperCase() + 
+                                doctor.email.split(/[@.]/)[0].slice(1) : 
+                                doctor._id)}
+                            </SelectItem>
+                          ) : null
+                        )).filter(Boolean) // Remove itens nulos do array
                       </SelectContent>
                     </Select>
                   </div>

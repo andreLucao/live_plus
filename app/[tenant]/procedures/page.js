@@ -44,6 +44,7 @@ export default function ProcedureManager() {
   const [nameFilter, setNameFilter] = useState("")
   const [selectedUser, setSelectedUser] = useState(null)
   const [isUserModalOpen, setIsUserModalOpen] = useState(false)
+  const [doctors, setDoctors] = useState([])
   const { tenant }= useParams()
 
   // Category colors configuration
@@ -116,6 +117,7 @@ export default function ProcedureManager() {
 
   useEffect(() => {
     fetchProcedures()
+    fetchDoctors()
   }, [])
 
   useEffect(() => {
@@ -138,6 +140,20 @@ export default function ProcedureManager() {
       setError("Falha ao carregar os procedimentos. Por favor, tente novamente mais tarde.")
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const fetchDoctors = async () => {
+    try {
+      const response = await fetch(`/api/${tenant}/users?role=doctor`)
+      if (!response.ok) throw new Error('Failed to fetch doctors')
+      const data = await response.json()
+      console.log('Doctors loaded:', data)
+      const doctorsList = data.filter(user => user.role === "doctor")
+      setDoctors(doctorsList)
+    } catch (error) {
+      console.error("Error loading doctors:", error)
+      setError("Failed to load doctors list")
     }
   }
 
@@ -260,6 +276,20 @@ export default function ProcedureManager() {
     return `${Math.floor(diffDays / 365)} anos atrás`
   }
 
+  const getDoctorName = (doctorId) => {
+    const doctor = doctors.find(d => d._id === doctorId)
+    if (!doctor) return doctorId
+    
+    if (doctor.name) return doctor.name
+    
+    if (doctor.email) {
+      const emailParts = doctor.email.split(/[@.]/)[0]
+      return emailParts.charAt(0).toUpperCase() + emailParts.slice(1)
+    }
+    
+    return doctorId
+  }
+
   const filteredProcedures = filterData(procedures).filter((procedure) => {
     const categoryMatch = categoryFilter === "all" || 
       procedure.category === categoryFilter
@@ -351,12 +381,31 @@ export default function ProcedureManager() {
                           />
                         </div>
                         <div>
-                          <Label htmlFor="procedureDoctor">Médico Responsável</Label><Input
-                            id="procedureDoctor"
+                          <Label htmlFor="procedureDoctor">Médico Responsável</Label>
+                          <Select
                             value={newProcedure.doctor}
-                            onChange={(e) => setNewProcedure({ ...newProcedure, doctor: e.target.value })}
-                            placeholder="Nome do médico"
-                          />
+                            onValueChange={(value) => setNewProcedure({ ...newProcedure, doctor: value })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione o médico" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {doctors.length > 0 ? (
+                                doctors.map((doctor) => (
+                                  <SelectItem key={doctor._id} value={doctor._id}>
+                                    {doctor.name || (doctor.email ? 
+                                      doctor.email.split(/[@.]/)[0].charAt(0).toUpperCase() + 
+                                      doctor.email.split(/[@.]/)[0].slice(1) : 
+                                      doctor._id)}
+                                  </SelectItem>
+                                ))
+                              ) : (
+                                <SelectItem value="" disabled>
+                                  Nenhum médico encontrado
+                                </SelectItem>
+                              )}
+                            </SelectContent>
+                          </Select>
                         </div>
                         <div>
                           <Label htmlFor="procedurePatient">Paciente</Label>
@@ -470,12 +519,31 @@ export default function ProcedureManager() {
                             onChange={(e) => setNewProcedure({ ...newProcedure, date: e.target.value })}
                             className="w-40"
                           />
-                          <Input
+                          <Select
                             value={newProcedure.doctor}
-                            onChange={(e) => setNewProcedure({ ...newProcedure, doctor: e.target.value })}
+                            onValueChange={(value) => setNewProcedure({ ...newProcedure, doctor: value })}
                             className="w-48"
-                            placeholder="Médico"
-                          />
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Médico" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {doctors.length > 0 ? (
+                                doctors.map((doctor) => (
+                                  <SelectItem key={doctor._id} value={doctor._id}>
+                                    {doctor.name || (doctor.email ? 
+                                      doctor.email.split(/[@.]/)[0].charAt(0).toUpperCase() + 
+                                      doctor.email.split(/[@.]/)[0].slice(1) : 
+                                      doctor._id)}
+                                  </SelectItem>
+                                ))
+                              ) : (
+                                <SelectItem value="" disabled>
+                                  Nenhum médico encontrado
+                                </SelectItem>
+                              )}
+                            </SelectContent>
+                          </Select>
                           <Input
                             value={newProcedure.patient}
                             onChange={(e) => setNewProcedure({ ...newProcedure, patient: e.target.value })}
@@ -513,20 +581,20 @@ export default function ProcedureManager() {
                               </Badge>
                               <Badge 
                                 variant="secondary" 
-                                className="bg-[#eaf5fd] text-[#009EE3] dark:bg-blue-900 dark:text-blue-100 cursor-pointer hover:bg-[#d5ebfd]"
+                                className="bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-100 cursor-pointer"
                                 onClick={() => {
-                                  setSelectedUser({ name: procedure.doctor, type: 'doctor' })
+                                  setSelectedUser({ name: getDoctorName(procedure.doctor), id: procedure.doctor, type: 'doctor' })
                                   setIsUserModalOpen(true)
                                 }}
                               >
                                 <User className="h-3 w-3 mr-1" />
-                                {procedure.doctor}
+                                {getDoctorName(procedure.doctor)}
                               </Badge>
                               <Badge 
                                 variant="secondary" 
-                                className="bg-[#eaf5fd] text-[#009EE3] dark:bg-blue-900 dark:text-blue-100 cursor-pointer hover:bg-[#d5ebfd]"
+                                className="bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-100 cursor-pointer"
                                 onClick={() => {
-                                  setSelectedUser({ name: procedure.patient, type: 'patient' })
+                                  setSelectedUser({ name: procedure.patient, id: procedure.patient, type: 'patient' })
                                   setIsUserModalOpen(true)
                                 }}
                               >
