@@ -10,14 +10,14 @@ export async function POST(request, { params }) {
     const userId = id.id;
 
     if (!tenant) {
-      return NextResponse.json({ error: 'Tenant is required' }, { status: 400 });
+      return NextResponse.json({ error: 'Tenant é obrigatório' }, { status: 400 });
     }
 
-    // Connect to the tenant's specific database
+    // Conectar ao banco de dados específico do tenant
     const connection = await connectDB(tenant);
     const User = getUserModel(connection);
 
-    // Find user with tenant-specific path and role='user'
+    // Encontrar usuário com caminho específico do tenant e role='user'
     const user = await User.findOne({
       _id: userId,
       tenantPath: tenant,
@@ -26,139 +26,139 @@ export async function POST(request, { params }) {
 
     if (!user) {
       return NextResponse.json(
-        { error: 'Patient not found' },
+        { error: 'Paciente não encontrado' },
         { status: 404 }
       );
     }
 
-    // Create a PDF document
+    // Criar um documento PDF
     const doc = new jsPDF();
     
-    // Helper function to add text with line breaks
+    // Função auxiliar para adicionar texto com quebras de linha
     const addWrappedText = (text, x, y, maxWidth) => {
-      const lines = doc.splitTextToSize(text || 'No information available', maxWidth);
+      const lines = doc.splitTextToSize(text || 'Nenhuma informação disponível', maxWidth);
       doc.text(lines, x, y);
-      return y + (lines.length * 7); // Return the new Y position
+      return y + (lines.length * 7); // Retorna a nova posição Y
     };
     
-    // Add content to the PDF
+    // Adicionar conteúdo ao PDF
     let yPos = 20;
     
-    // Title
+    // Título
     doc.setFontSize(20);
-    doc.text('Patient Medical Record', 105, yPos, { align: 'center' });
+    doc.text('Registro Médico do Paciente', 105, yPos, { align: 'center' });
     yPos += 15;
     
-    // Patient info
+    // Informações do paciente
     doc.setFontSize(16);
-    doc.text('Patient Information', 20, yPos);
+    doc.text('Informações do Paciente', 20, yPos);
     yPos += 10;
     
     doc.setFontSize(12);
     doc.text(`Email: ${user.email || 'N/A'}`, 20, yPos);
     yPos += 7;
-    doc.text(`Created: ${user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}`, 20, yPos);
+    doc.text(`Criado em: ${user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}`, 20, yPos);
     yPos += 7;
-    doc.text(`Last Login: ${user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleDateString() : 'N/A'}`, 20, yPos);
+    doc.text(`Último login: ${user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleDateString() : 'N/A'}`, 20, yPos);
     yPos += 15;
     
-    // Medical details
+    // Detalhes médicos
     const medicalDetails = user.medicalDetails || {};
     
-    // Clinical History
+    // Histórico Clínico
     doc.setFontSize(16);
-    doc.text('Clinical History', 20, yPos);
+    doc.text('Histórico Clínico', 20, yPos);
     yPos += 10;
     doc.setFontSize(12);
     yPos = addWrappedText(medicalDetails.clinicalHistory, 20, yPos, 170);
     yPos += 10;
     
-    // Surgical History
+    // Histórico Cirúrgico
     doc.setFontSize(16);
-    doc.text('Surgical History', 20, yPos);
+    doc.text('Histórico Cirúrgico', 20, yPos);
     yPos += 10;
     doc.setFontSize(12);
     yPos = addWrappedText(medicalDetails.surgicalHistory, 20, yPos, 170);
     yPos += 10;
     
-    // Add a new page if we're running out of space
+    // Adicionar uma nova página se estiver ficando sem espaço
     if (yPos > 250) {
       doc.addPage();
       yPos = 20;
     }
     
-    // Family History
+    // Histórico Familiar
     doc.setFontSize(16);
-    doc.text('Family History', 20, yPos);
+    doc.text('Histórico Familiar', 20, yPos);
     yPos += 10;
     doc.setFontSize(12);
     yPos = addWrappedText(medicalDetails.familyHistory, 20, yPos, 170);
     yPos += 10;
     
-    // Habits
+    // Hábitos
     doc.setFontSize(16);
-    doc.text('Habits', 20, yPos);
+    doc.text('Hábitos', 20, yPos);
     yPos += 10;
     doc.setFontSize(12);
     yPos = addWrappedText(medicalDetails.habits, 20, yPos, 170);
     yPos += 10;
     
-    // Add a new page if we're running out of space
+    // Adicionar uma nova página se estiver ficando sem espaço
     if (yPos > 250) {
       doc.addPage();
       yPos = 20;
     }
     
-    // Allergies
+    // Alergias
     doc.setFontSize(16);
-    doc.text('Allergies', 20, yPos);
+    doc.text('Alergias', 20, yPos);
     yPos += 10;
     doc.setFontSize(12);
     yPos = addWrappedText(medicalDetails.allergies, 20, yPos, 170);
     yPos += 10;
     
-    // Medications
+    // Medicamentos
     doc.setFontSize(16);
-    doc.text('Current Medications', 20, yPos);
+    doc.text('Medicamentos Atuais', 20, yPos);
     yPos += 10;
     doc.setFontSize(12);
     yPos = addWrappedText(medicalDetails.medications, 20, yPos, 170);
     yPos += 10;
     
-    // Add a new page if we're running out of space
+    // Adicionar uma nova página se estiver ficando sem espaço
     if (yPos > 250) {
       doc.addPage();
       yPos = 20;
     }
     
-    // Latest Diagnosis
+    // Último Diagnóstico
     if (medicalDetails.lastDiagnosis) {
       doc.setFontSize(16);
-      doc.text('Latest Diagnosis', 20, yPos);
+      doc.text('Último Diagnóstico', 20, yPos);
       yPos += 10;
       doc.setFontSize(12);
-      doc.text(`Date: ${new Date(medicalDetails.lastDiagnosis.date).toLocaleDateString()}`, 20, yPos);
+      doc.text(`Data: ${new Date(medicalDetails.lastDiagnosis.date).toLocaleDateString()}`, 20, yPos);
       yPos += 7;
-      doc.text(`Diagnosis: ${medicalDetails.lastDiagnosis.diagnosis || 'No diagnosis title'}`, 20, yPos);
+      doc.text(`Diagnóstico: ${medicalDetails.lastDiagnosis.diagnosis || 'Nenhum título de diagnóstico'}`, 20, yPos);
       yPos += 7;
-      yPos = addWrappedText(`Notes: ${medicalDetails.lastDiagnosis.notes || 'No notes available'}`, 20, yPos, 170);
+      yPos = addWrappedText(`Observações: ${medicalDetails.lastDiagnosis.notes || 'Nenhuma observação disponível'}`, 20, yPos, 170);
     }
     
-    // Get the PDF as a buffer
+    // Obter o PDF como um buffer
     const pdfOutput = doc.output('arraybuffer');
     
     return new NextResponse(Buffer.from(pdfOutput), {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="patient_${userId}.pdf"`,
+        'Content-Disposition': `attachment; filename="paciente_${userId}.pdf"`,
       },
     });
   } catch (error) {
-    console.error('Error generating PDF:', error);
+    console.error('Erro ao gerar PDF:', error);
     return NextResponse.json(
-      { error: `Failed to generate PDF: ${error.message}` },
+      { error: `Falha ao gerar PDF: ${error.message}` },
       { status: 500 }
     );
   }
-} 
+}
