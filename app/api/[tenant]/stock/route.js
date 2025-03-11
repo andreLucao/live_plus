@@ -1,4 +1,4 @@
-//api/stock/route.js
+//api/[tenant]/stock/route.js
 
 import { MongoClient, ObjectId } from 'mongodb';
 import { NextResponse } from 'next/server';

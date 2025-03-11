@@ -406,7 +406,6 @@ export default function HospitalIncomeManager() {
                     </form>
                   </DialogContent>
                 </Dialog>
-                <Switch checked={darkMode} onCheckedChange={setDarkMode} />
               </div>
             </div>
 

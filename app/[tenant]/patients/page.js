@@ -109,9 +109,7 @@ export default function PatientsPage() {
                 </span>
               </div>
 
-              <div className="flex items-center gap-4">
-                <Switch checked={darkMode} onCheckedChange={setDarkMode} />
-              </div>
+              
             </div>
 
             {/* Error message */}

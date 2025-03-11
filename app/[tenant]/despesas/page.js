@@ -425,7 +425,6 @@ export default function ExpensesPage() {
                     </form>
                   </DialogContent>
                 </Dialog>
-                <Switch checked={darkMode} onCheckedChange={setDarkMode} />
               </div>
             </div>
 

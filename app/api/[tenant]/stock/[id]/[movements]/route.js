@@ -1,4 +1,4 @@
-//api/stock/[id]/[movement]route.js
+//api/[tenant]/stock/[id]/[movements]/route.js
 
 import { MongoClient, ObjectId } from 'mongodb';
 import { NextResponse } from 'next/server';
@@ -8,7 +8,9 @@ const client = new MongoClient(uri);
 
 export async function POST(request, { params }) {
   try {
-    const { id, movement } = params;
+    // Await the params object before destructuring
+    const paramsObj = await params;
+    const { id, movements } = paramsObj;
     const { quantity, observations, expiration_date } = await request.json();
 
     await client.connect();
@@ -28,13 +30,13 @@ export async function POST(request, { params }) {
     let newQuantity;
     let updateData = {};
 
-    if (movement === 'incoming') {
+    if (movements === 'incoming') {
       newQuantity = product.quantity + quantity;
       // Se for uma entrada, atualiza a data de vencimento
       if (expiration_date) {
         updateData.expiration_date = new Date(expiration_date);
       }
-    } else if (movement === 'outgoing') {
+    } else if (movements === 'outgoing') {
       newQuantity = product.quantity - quantity;
       
       if (newQuantity < 0) {
@@ -53,7 +55,7 @@ export async function POST(request, { params }) {
     // Registra a movimentação
     const movementRecord = {
       product_id: new ObjectId(id),
-      type: movement,
+      type: movements,
       quantity,
       previous_quantity: product.quantity,
       new_quantity: newQuantity,

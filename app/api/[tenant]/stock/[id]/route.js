@@ -1,4 +1,4 @@
-//api/stock/[id]/route.js
+//api/[tenant]/stock/[id]/route.js
 
 import { MongoClient, ObjectId } from 'mongodb';
 import { NextResponse } from 'next/server';
@@ -9,7 +9,9 @@ const client = new MongoClient(uri);
 // PUT /api/stock/[id] - Atualiza um produto
 export async function PUT(request, { params }) {
   try {
-    const { id } = params;
+    // Await the params object before destructuring
+    const paramsObj = await params;
+    const { id } = paramsObj;
     const updates = await request.json();
     
     await client.connect();
@@ -47,7 +49,9 @@ export async function PUT(request, { params }) {
 // DELETE /api/stock/[id] - Remove um produto
 export async function DELETE(request, { params }) {
   try {
-    const { id } = params;
+    // Await the params object before destructuring
+    const paramsObj = await params;
+    const { id } = paramsObj;
     
     await client.connect();
     const database = client.db('hospital');

@@ -374,7 +374,6 @@ export default function ProcedureManager() {
                     </form>
                   </DialogContent>
                 </Dialog>
-                <Switch checked={darkMode} onCheckedChange={setDarkMode} />
               </div>
             </div>
 
