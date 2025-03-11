@@ -620,7 +620,6 @@ export default function HospitalIncomeManager() {
                         </div>
                         <div className="flex flex-wrap items-center gap-2 md:gap-4">
                           <Badge variant="secondary" className="bg-[#eaf5fd] text-[#009EE3]">
-                            <DollarSign className="h-3 w-3 mr-1" />
                             R$ {income.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </Badge>
                           <Badge variant="secondary" className="bg-[#eaf5fd] text-[#009EE3]">

@@ -616,7 +616,6 @@ export default function ExpensesPage() {
                           </div>
                           <div className="flex flex-wrap items-center gap-2 md:gap-4">
                             <Badge variant="secondary" className="bg-[#eaf5fd] text-[#009EE3] dark:bg-blue-900 dark:text-blue-100">
-                              <DollarSign className="h-3 w-3 mr-1" />
                               R$ {bill.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </Badge>
                             <Badge variant="secondary" className="bg-[#eaf5fd] text-[#009EE3] dark:bg-blue-900 dark:text-blue-100">
