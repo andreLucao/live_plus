@@ -245,21 +245,37 @@ export function CustomerMetrics() {
         setDoctorAppointmentsData(doctorAppointments)
 
         // Calcular métricas de clientes para o novo gráfico
-        // Novos clientes (usuários com role="user" criados no mês atual)
+        // Novos clientes (usuários com role="user" criados nos últimos 30 dias)
+        const thirtyDaysAgo = new Date(today);
+        thirtyDaysAgo.setDate(today.getDate() - 30);
+        
         const newClients = usersData.filter(user => 
-          user.role === "user" && new Date(user.createdAt) >= currentMonth
-        ).length
+          user.role === "user" && new Date(user.createdAt) >= thirtyDaysAgo
+        ).length;
 
-        // Clientes recorrentes (usuários com role="user" criados antes do mês atual)
-        const recurringClients = usersData.filter(user => 
-          user.role === "user" && new Date(user.createdAt) < currentMonth
-        ).length
+        // Clientes recorrentes (usuários com role="user" com último login mais de 30 dias após a criação)
+        const recurringClients = usersData.filter(user => {
+          if (user.role !== "user") return false;
+          
+          const creationDate = new Date(user.createdAt);
+          const lastLoginDate = user.lastLogin ? new Date(user.lastLogin) : null;
+          
+          // Se não tiver data de último login, não é recorrente
+          if (!lastLoginDate) return false;
+          
+          // Calcula a diferença em dias entre a criação e o último login
+          const diffTime = Math.abs(lastLoginDate - creationDate);
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          
+          // É recorrente se o último login for mais de 30 dias após a criação
+          return diffDays > 30;
+        }).length;
 
         console.log('Client metrics calculated:', {
           newClients,
           recurringClients,
           retentionRate: Math.round(retentionRate)
-        })
+        });
 
         // Dados para o gráfico de métricas de clientes
         const clientMetricsDataArray = [
