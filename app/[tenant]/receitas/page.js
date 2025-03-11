@@ -607,7 +607,7 @@ export default function HospitalIncomeManager() {
                         <div className="flex flex-col gap-2 flex-1">
                           <div className="flex items-center gap-2">
                             <span className="font-medium text-gray-800">
-                              {income.name}
+                            {getDoctorName(income.name)}
                             </span>
                             <Badge variant="outline" className="text-xs">
                               {income.paymentType}
