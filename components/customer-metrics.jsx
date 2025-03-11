@@ -27,14 +27,6 @@ export function CustomerMetrics() {
   const APPOINTMENT_COLORS = ["#4f46e5", "#10b981"]
   const CLIENT_METRICS_COLORS = ["#4f46e5", "#10b981", "#f59e0b"]
 
-  // Dados para o gráfico de despesas (exemplo fixo)
-  const expenseData = [
-    { name: 'Folha de Pagamento', value: 35.2 },
-    { name: 'Marketing', value: 25.5 },
-    { name: 'Infraestrutura', value: 20.3 },
-    { name: 'Outros', value: 20.1 }
-  ]
-
   // Funções de formatação
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -340,7 +332,7 @@ export function CustomerMetrics() {
             ))}
           </div>
           <div className="grid gap-4 md:grid-cols-2">
-            {[...Array(2)].map((_, index) => (
+            {[...Array(1)].map((_, index) => (
               <div key={index} className="p-4 bg-white rounded-lg shadow-sm h-80">
                 <div className="h-4 w-24 bg-gray-200 rounded animate-pulse mb-2"></div>
                 <div className="h-64 w-full bg-gray-200 rounded animate-pulse"></div>
@@ -387,7 +379,7 @@ export function CustomerMetrics() {
         </div>
 
         {/* Novos gráficos para a aba de Métricas de Clientes */}
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-1">
           {/* Gráfico de Métricas de Clientes */}
           <Card className="col-span-1">
             <CardHeader className="pb-2">
@@ -428,56 +420,6 @@ export function CustomerMetrics() {
                         <span>{metric.name}</span>
                       </div>
                       <span className="font-medium">{formatNumber(metric.value)}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          {/* Gráfico de Distribuição de Despesas */}
-          <Card className="col-span-1">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Distribuição de Despesas</CardTitle>
-              <CardDescription>Categorias de despesas</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={expenseData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={true}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                      nameKey="name"
-                      label={({ name, value }) => `${name}: ${value}%`}
-                    >
-                      {expenseData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(value) => `${value}%`} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              
-              <div className="mt-4">
-                <h4 className="text-sm font-medium mb-2">Detalhamento de Despesas</h4>
-                <div className="space-y-2">
-                  {expenseData.map((expense, index) => (
-                    <div key={index} className="flex justify-between items-center text-sm">
-                      <div className="flex items-center">
-                        <div 
-                          className="w-3 h-3 rounded-full mr-2" 
-                          style={{ backgroundColor: COLORS[index % COLORS.length] }}
-                        ></div>
-                        <span>{expense.name}</span>
-                      </div>
-                      <span className="font-medium">{expense.value}%</span>
                     </div>
                   ))}
                 </div>
@@ -657,4 +599,4 @@ export function CustomerMetrics() {
       )}
     </Tabs>
   )
-} 
+}

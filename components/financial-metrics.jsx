@@ -51,15 +51,21 @@ export function FinancialMetrics() {
   const [metrics, setMetrics] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [detailedData, setDetailedData] = useState(null)
+  const [periodoSelecionado, setPeriodoSelecionado] = useState("atual")
   const { tenant } = useParams()
 
   useEffect(() => {
     const fetchData = async () => {
+      setIsLoading(true)
       try {
+        // Construir parâmetros de consulta com base no período selecionado
+        const params = new URLSearchParams();
+        params.append('periodo', periodoSelecionado);
+        
         // Buscar dados da API
         const [incomesResponse, expensesResponse] = await Promise.all([
-          fetch(`/api/${tenant}/income`),
-          fetch(`/api/${tenant}/bills`)
+          fetch(`/api/${tenant}/income?${params}`),
+          fetch(`/api/${tenant}/bills?${params}`)
         ])
 
         if (!incomesResponse.ok || !expensesResponse.ok) {
@@ -71,7 +77,7 @@ export function FinancialMetrics() {
           expensesResponse.json()
         ])
 
-        // Processar dados para o período atual
+        // Processar dados para o período selecionado
         processApiData(incomesData, expensesData)
 
       } catch (error) {
@@ -82,7 +88,7 @@ export function FinancialMetrics() {
     }
 
     fetchData()
-  }, [tenant])
+  }, [tenant, periodoSelecionado])
 
   // Função para processar os dados da API
   const processApiData = (incomesData, expensesData) => {
@@ -239,24 +245,36 @@ export function FinancialMetrics() {
   const totalExpenses = Object.values(dreData.expenses).reduce((a, b) => a + b, 0)
   const netProfit = grossProfit + totalExpenses
 
-  // Cálculo de indicadores financeiros
-  const financialIndicators = {
-    grossMargin: (grossProfit / netRevenue) * 100,
-    netMargin: (netProfit / netRevenue) * 100,
-    costRatio: (Math.abs(totalCosts) / netRevenue) * 100,
-    expenseRatio: (Math.abs(totalExpenses) / netRevenue) * 100,
-  }
-
   return (
     <div className="space-y-8">
       {/* Cabeçalho */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="space-y-1">
-          <h2 className="text-lg font-semibold">Demonstração do Resultado do Exercício</h2>
+          
           <p className="text-sm text-muted-foreground flex items-center gap-1">
             <Calendar className="h-4 w-4" />
             {dreData.period}
           </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Select defaultValue="atual" onValueChange={(value) => setPeriodoSelecionado(value)}>
+            <SelectTrigger className="w-[180px]">
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4" />
+                <SelectValue placeholder="Selecionar período" />
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="atual">Período Atual</SelectItem>
+              <SelectItem value="mes_anterior">Mês Anterior</SelectItem>
+              <SelectItem value="trimestre">Último Trimestre</SelectItem>
+              <SelectItem value="semestre">Último Semestre</SelectItem>
+              <SelectItem value="ano">Último Ano</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button variant="outline" size="icon">
+            <Download className="h-4 w-4" />
+          </Button>
         </div>
       </div>
 
@@ -380,56 +398,14 @@ export function FinancialMetrics() {
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-2xl font-bold">{formatCurrency(netProfit)}</div>
+                <div className="text-sm text-muted-foreground mt-1">
+                  <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${netProfit >= 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                    {((netProfit / grossRevenue) * 100).toFixed(1)}%
+                  </span>
+                </div>
               </div>
             </div>
             <div className="absolute top-0 right-0 h-full w-1.5 bg-green-500" />
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Indicadores Financeiros */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Margem Bruta</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div className="text-2xl font-bold">{financialIndicators.grossMargin.toFixed(1)}%</div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Margem Líquida</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div className="text-2xl font-bold">{financialIndicators.netMargin.toFixed(1)}%</div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Custos/Receita</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div className="text-2xl font-bold">{financialIndicators.costRatio.toFixed(1)}%</div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Despesas/Receita</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div className="text-2xl font-bold">{financialIndicators.expenseRatio.toFixed(1)}%</div>
-            </div>
           </CardContent>
         </Card>
       </div>

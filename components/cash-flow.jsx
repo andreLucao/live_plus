@@ -18,15 +18,13 @@ import {
   ResponsiveContainer 
 } from 'recharts'
 import { 
-  Wallet, 
   ArrowUpCircle, 
   ArrowDownCircle, 
   Percent, 
   RefreshCw,
   Calculator,
   TrendingUp,
-  TrendingDown,
-  Activity
+  TrendingDown
 } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
@@ -34,9 +32,6 @@ export function CashFlow() {
   const [data, setData] = useState([])
   const [activeTab, setActiveTab] = useState("overview")
   const [metrics, setMetrics] = useState({
-    saldoAtual: 0,
-    entradasPrevistas: 0,
-    saidasPrevistas: 0,
     entradas: 0,
     entradasPercentage: 0,
     saidas: 0,
@@ -196,10 +191,6 @@ export function CashFlow() {
 
         // Calcula métricas
         const currentMonthYearStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`
-        const nextMonthYear = currentMonth === 11 ? 
-          { year: currentYear + 1, month: 1 } : 
-          { year: currentYear, month: currentMonth + 2 }
-        const nextMonthYearStr = `${nextMonthYear.year}-${String(nextMonthYear.month).padStart(2, '0')}`
 
         // Prepare Category Data for each tab
         const incomeCategories = incomesData.reduce((acc, income) => {
@@ -236,17 +227,6 @@ export function CashFlow() {
           impostos: Object.entries(taxCategories).map(([name, value]) => ({ name, value })),
           transferencias: Object.entries(transferCategories).map(([name, value]) => ({ name, value }))
         })
-
-        // Saldo atual (soma de todas as transações até hoje)
-        const saldoAtual = [...incomesData, ...expensesData, ...taxesData, ...transfersData]
-          .filter(item => new Date(item.date) <= today)
-          .reduce((acc, curr) => {
-            if (incomesData.includes(curr)) return acc + curr.amount
-            if (expensesData.includes(curr)) return acc - curr.amount
-            if (taxesData.includes(curr)) return acc - curr.amount
-            if (transfersData.includes(curr)) return acc // Transfers don't affect balance
-            return acc
-          }, 0)
 
         // Entradas (todas as receitas do mês atual)
         const entradas = incomesData
@@ -340,28 +320,7 @@ export function CashFlow() {
         const saldoFinalPercentage = saldoFinalAnterior ? 
           ((saldoFinal - saldoFinalAnterior) / Math.abs(saldoFinalAnterior)) * 100 : 0
 
-        // Entradas previstas (receitas futuras do mês atual e próximo)
-        const entradasPrevistas = incomesData
-          .filter(income => {
-            const date = new Date(income.date)
-            const itemMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-            return date > today && (itemMonth === currentMonthYearStr || itemMonth === nextMonthYearStr)
-          })
-          .reduce((sum, income) => sum + income.amount, 0)
-
-        // Saídas previstas (despesas futuras do mês atual e próximo)
-        const saidasPrevistas = [...expensesData, ...taxesData]
-          .filter(expense => {
-            const date = new Date(expense.date)
-            const itemMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-            return date > today && (itemMonth === currentMonthYearStr || itemMonth === nextMonthYearStr)
-          })
-          .reduce((sum, expense) => sum + expense.amount, 0)
-
         setMetrics({
-          saldoAtual,
-          entradasPrevistas,
-          saidasPrevistas,
           entradas,
           entradasPercentage,
           saidas,
@@ -478,42 +437,6 @@ export function CashFlow() {
             <Calculator className="h-5 w-5 text-gray-500" />
           </div>
           {renderPercentageChange(metrics.saldoFinalPercentage)}
-        </div>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <div className="p-4 bg-white rounded-lg shadow-sm">
-          <div className="flex justify-between items-start">
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground">Saldo Atual</h3>
-              <p className={`text-2xl font-bold mt-2 ${metrics.saldoAtual >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                R$ {metrics.saldoAtual.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-              </p>
-            </div>
-            <Wallet className="h-5 w-5 text-gray-500" />
-          </div>
-        </div>
-        <div className="p-4 bg-white rounded-lg shadow-sm">
-          <div className="flex justify-between items-start">
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground">Entradas Previstas</h3>
-              <p className="text-2xl font-bold mt-2 text-green-600">
-                R$ {metrics.entradasPrevistas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-              </p>
-            </div>
-            <ArrowUpCircle className="h-5 w-5 text-green-500" />
-          </div>
-        </div>
-        <div className="p-4 bg-white rounded-lg shadow-sm">
-          <div className="flex justify-between items-start">
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground">Saídas Previstas</h3>
-              <p className="text-2xl font-bold mt-2 text-red-600">
-                R$ {metrics.saidasPrevistas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-              </p>
-            </div>
-            <ArrowDownCircle className="h-5 w-5 text-red-500" />
-          </div>
         </div>
       </div>
 
