@@ -352,7 +352,8 @@ export function CashFlow() {
                       data={categoryData.receitas}
                       cx="50%"
                       cy="50%"
-                      labelLine={false}
+                      labelLine={true}
+                      innerRadius={60}
                       outerRadius={80}
                       fill="#8884d8"
                       dataKey="value"
@@ -396,7 +397,8 @@ export function CashFlow() {
                       data={categoryData.despesas}
                       cx="50%"
                       cy="50%"
-                      labelLine={false}
+                      labelLine={true}
+                      innerRadius={60}
                       outerRadius={80}
                       fill="#8884d8"
                       dataKey="value"
