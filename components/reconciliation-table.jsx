@@ -8,7 +8,6 @@ import {
 import {
   Table, TableHeader, TableBody, TableHead, TableRow, TableCell
 } from "./ui/table"
-import { Badge } from "./ui/badge"
 
 export function ReconciliationTable() {
   const [reconciliations, setReconciliations] = useState([])
@@ -54,8 +53,7 @@ export function ReconciliationTable() {
             // Cálculo simplificado de imposto: 15% sobre receitas PJ
             tax: income.paymentType === 'PJ' ? income.amount * 0.15 : 0,
             paymentType: income.paymentType,
-            isIncome: true,
-            status: 'conciliado' // Assumindo que todos os registros estão conciliados
+            isIncome: true
           })),
           ...expensesData.map(expense => ({
             id: expense._id,
@@ -66,8 +64,7 @@ export function ReconciliationTable() {
             pjValue: expense.paymentType === 'PJ' ? -expense.amount : 0, // Negativo para despesas
             tax: 0, // Despesas geralmente não geram impostos diretos
             paymentType: expense.paymentType,
-            isIncome: false,
-            status: 'conciliado' // Assumindo que todos os registros estão conciliados
+            isIncome: false
           }))
         ]
 
@@ -163,7 +160,6 @@ export function ReconciliationTable() {
                   <TableHead className="text-right">Valor PF</TableHead>
                   <TableHead className="text-right">Valor PJ</TableHead>
                   <TableHead className="text-right">Imposto</TableHead>
-                  <TableHead className="text-center">Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -175,7 +171,6 @@ export function ReconciliationTable() {
                     <TableCell className="text-right"><div className="h-4 w-20 bg-gray-200 rounded animate-pulse ml-auto"></div></TableCell>
                     <TableCell className="text-right"><div className="h-4 w-20 bg-gray-200 rounded animate-pulse ml-auto"></div></TableCell>
                     <TableCell className="text-right"><div className="h-4 w-16 bg-gray-200 rounded animate-pulse ml-auto"></div></TableCell>
-                    <TableCell className="text-center"><div className="h-4 w-20 bg-gray-200 rounded animate-pulse mx-auto"></div></TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -251,7 +246,6 @@ export function ReconciliationTable() {
                 <TableHead className="text-right">Valor PF</TableHead>
                 <TableHead className="text-right">Valor PJ</TableHead>
                 <TableHead className="text-right">Imposto</TableHead>
-                <TableHead className="text-center">Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -271,18 +265,6 @@ export function ReconciliationTable() {
                   <TableCell className="text-right">
                     {item.tax > 0 ? formatCurrency(item.tax) : '-'}
                   </TableCell>
-                  <TableCell className="text-center">
-                    <Badge 
-                      variant={item.status === 'conciliado' ? 'default' : 'outline'}
-                      className={
-                        item.status === 'conciliado' 
-                          ? 'bg-green-100 text-green-800 hover:bg-green-100' 
-                          : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100'
-                      }
-                    >
-                      {item.status === 'conciliado' ? 'Conciliado' : 'Pendente'}
-                    </Badge>
-                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -291,4 +273,4 @@ export function ReconciliationTable() {
       </Card>
     </div>
   )
-} 
+}
