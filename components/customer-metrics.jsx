@@ -53,16 +53,25 @@ export function CustomerMetrics() {
     const fetchData = async () => {
       try {
         // Busca dados de clientes, transações, médicos, atendimentos e usuários
+        console.log('Fetching data for tenant:', tenant);
+        
         const [clientsResponse, incomesResponse, doctorsResponse, appointmentsResponse, usersResponse] = await Promise.all([
-          fetch(`/api/${tenant}/clients`),
+          fetch(`/api/${tenant}/patients`),
           fetch(`/api/${tenant}/income`),
           fetch(`/api/${tenant}/users?role=doctor`),
           fetch(`/api/${tenant}/appointments`),
           fetch(`/api/${tenant}/users?role=user`)
-        ])
+        ]);
 
         if (!clientsResponse.ok || !incomesResponse.ok || !doctorsResponse.ok || !appointmentsResponse.ok || !usersResponse.ok) {
-          throw new Error('Failed to fetch data')
+          console.error('API response not OK:', {
+            clients: clientsResponse.status,
+            incomes: incomesResponse.status,
+            doctors: doctorsResponse.status,
+            appointments: appointmentsResponse.status,
+            users: usersResponse.status
+          });
+          throw new Error('Failed to fetch data');
         }
 
         const [clientsData, incomesData, doctorsData, appointmentsData, usersData] = await Promise.all([
@@ -71,8 +80,21 @@ export function CustomerMetrics() {
           doctorsResponse.json(),
           appointmentsResponse.json(),
           usersResponse.json()
-        ])
+        ]);
 
+        console.log('API Data received:', {
+          clients: clientsData.length,
+          incomes: incomesData.length,
+          doctors: doctorsData.length,
+          appointments: appointmentsData.length,
+          users: usersData.length
+        });
+        
+        // Log sample data to verify structure
+        if (incomesData.length > 0) console.log('Sample income:', incomesData[0]);
+        if (doctorsData.length > 0) console.log('Sample doctor:', doctorsData[0]);
+        if (appointmentsData.length > 0) console.log('Sample appointment:', appointmentsData[0]);
+        
         const today = new Date()
         const currentMonth = new Date(today.getFullYear(), today.getMonth(), 1)
         const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1)
@@ -162,6 +184,7 @@ export function CustomerMetrics() {
         // Processar dados para métricas por médico
         // Filtrar apenas os usuários com role="doctor"
         const doctors = doctorsData.filter(user => user.role === "doctor")
+        console.log('Filtered doctors:', doctors.length)
 
         // Calcular receita por médico
         const doctorRevenues = doctors.map(doctor => {
@@ -173,6 +196,8 @@ export function CustomerMetrics() {
             const incomeUserId = income.userId?.$oid || income.userId?.toString() || income.userId
             return incomeUserId === doctorId
           })
+          
+          console.log(`Doctor ${doctor.name || doctor.email} has ${doctorIncomes.length} incomes`)
           
           // Calcular receita total
           const totalRevenue = doctorIncomes.reduce((sum, income) => sum + income.amount, 0)
@@ -188,6 +213,7 @@ export function CustomerMetrics() {
           }
         }).sort((a, b) => b.revenue - a.revenue) // Ordenar por receita, do maior para o menor
 
+        console.log('Doctor revenues calculated:', doctorRevenues)
         setDoctorRevenueData(doctorRevenues)
 
         // Processar dados de atendimentos por médico
@@ -199,6 +225,8 @@ export function CustomerMetrics() {
             const apptDoctorId = appt.professional?.$oid || appt.professional?.toString() || appt.professional
             return apptDoctorId === doctorId
           })
+          
+          console.log(`Doctor ${doctor.name || doctor.email} has ${doctorAppts.length} appointments`)
           
           // Contar consultas e procedimentos
           const consultations = doctorAppts.filter(appt => appt.type === 'consultation').length
@@ -213,6 +241,7 @@ export function CustomerMetrics() {
           }
         }).sort((a, b) => b.total - a.total) // Ordenar por total de atendimentos, do maior para o menor
 
+        console.log('Doctor appointments calculated:', doctorAppointments)
         setDoctorAppointmentsData(doctorAppointments)
 
         // Calcular métricas de clientes para o novo gráfico
@@ -226,8 +255,14 @@ export function CustomerMetrics() {
           user.role === "user" && new Date(user.createdAt) < currentMonth
         ).length
 
+        console.log('Client metrics calculated:', {
+          newClients,
+          recurringClients,
+          retentionRate: Math.round(retentionRate)
+        })
+
         // Dados para o gráfico de métricas de clientes
-        setClientMetricsData([
+        const clientMetricsDataArray = [
           {
             name: "Novos Clientes",
             value: newClients,
@@ -243,7 +278,10 @@ export function CustomerMetrics() {
             value: Math.round(retentionRate),
             color: CLIENT_METRICS_COLORS[2]
           }
-        ])
+        ]
+
+        console.log('Setting client metrics data:', clientMetricsDataArray)
+        setClientMetricsData(clientMetricsDataArray)
 
       } catch (error) {
         console.error('Erro ao buscar dados:', error)

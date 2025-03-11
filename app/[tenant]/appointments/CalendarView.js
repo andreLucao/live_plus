@@ -20,7 +20,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 
-export default function CalendarView({ appointments = [], onStartMeeting }) {
+export default function CalendarView({ appointments = [], onStartMeeting, doctors = [] }) {
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [isCalendarOpen, setIsCalendarOpen] = useState(false)
   const [currentMonth, setCurrentMonth] = useState(new Date())
@@ -98,6 +98,23 @@ export default function CalendarView({ appointments = [], onStartMeeting }) {
 
   // Gera os horários para a visualização diária (de 8h às 18h)
   const timeSlots = Array.from({ length: 11 }, (_, i) => i + 8)
+
+  // Helper function to get doctor name from ID
+  const getDoctorName = (doctorId) => {
+    const doctor = doctors.find(d => d._id === doctorId)
+    if (!doctor) return doctorId
+    
+    if (doctor.name) return doctor.name
+    
+    // Extract first name from email (before the dot or @ symbol)
+    if (doctor.email) {
+      const emailParts = doctor.email.split(/[@.]/)[0]
+      // Capitalize first letter
+      return emailParts.charAt(0).toUpperCase() + emailParts.slice(1)
+    }
+    
+    return doctorId
+  }
 
   // Quando o usuário seleciona uma data de um mês diferente, atualiza o mês atual
   useEffect(() => {
@@ -274,7 +291,7 @@ export default function CalendarView({ appointments = [], onStartMeeting }) {
                               </div>
                               
                               <div className="text-xs" style={{ color: '#4B5563' }}>
-                                {appointment.service} com {appointment.professional}
+                                {appointment.service} com {getDoctorName(appointment.professional)}
                               </div>
                               
                               <div className="flex justify-between items-center mt-1">

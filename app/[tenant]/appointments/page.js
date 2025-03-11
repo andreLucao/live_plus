@@ -51,6 +51,7 @@ export default function AppointmentManager() {
   const [jitsiModalOpen, setJitsiModalOpen] = useState(false)
   const [currentMeeting, setCurrentMeeting] = useState(null)
   const [isUpdatingAll, setIsUpdatingAll] = useState(false)
+  const [doctors, setDoctors] = useState([])
 
   const services = [
     "Consulta Médica",
@@ -64,6 +65,7 @@ export default function AppointmentManager() {
 
   useEffect(() => {
     fetchAppointments()
+    fetchDoctors()
   }, [])
 
   const fetchAppointments = async () => {
@@ -80,6 +82,20 @@ export default function AppointmentManager() {
       setError("Falha ao carregar agendamentos")
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const fetchDoctors = async () => {
+    try {
+      const response = await fetch(`/api/${tenant}/users?role=doctor`)
+      if (!response.ok) throw new Error('Failed to fetch doctors')
+      const data = await response.json()
+      console.log('Doctors loaded:', data)
+      const doctorsList = data.filter(user => user.role === "doctor")
+      setDoctors(doctorsList)
+    } catch (error) {
+      console.error("Error loading doctors:", error)
+      setError("Failed to load doctors list")
     }
   }
 
@@ -244,13 +260,37 @@ export default function AppointmentManager() {
   const filterByDateRange = (date) => {
     if (!startDate && !endDate) return true
     const appointmentDate = new Date(date)
-    const start = startDate ? new Date(startDate) : new Date(0)
-    const end = endDate ? new Date(endDate) : new Date()
-    end.setHours(23, 59, 59, 999)
-    return appointmentDate >= start && appointmentDate <= end
+    const start = startDate ? new Date(startDate) : null
+    const end = endDate ? new Date(endDate) : null
+    
+    if (start && end) {
+      return appointmentDate >= start && appointmentDate <= end
+    } else if (start) {
+      return appointmentDate >= start
+    } else if (end) {
+      return appointmentDate <= end
+    }
+    
+    return true
   }
 
-  const professionals = [...new Set(appointments.map(a => a.professional))]
+  // Helper function to get doctor name from ID
+  const getDoctorName = (doctorId) => {
+    const doctor = doctors.find(d => d._id === doctorId)
+    if (!doctor) return doctorId
+    
+    if (doctor.name) return doctor.name
+    
+    // Extract first name from email (before the dot or @ symbol)
+    if (doctor.email) {
+      const emailParts = doctor.email.split(/[@.]/)[0]
+      // Capitalize first letter
+      return emailParts.charAt(0).toUpperCase() + emailParts.slice(1)
+    }
+    
+    return doctorId
+  }
+
   const filteredAppointments = filterAppointments(appointments)
 
   // Função para atualizar todos os agendamentos existentes
@@ -350,13 +390,31 @@ export default function AppointmentManager() {
                       </div>
                       <div>
                         <Label htmlFor="professional">Profissional</Label>
-                        <Input
-                          id="professional"
+                        <Select
                           required
                           value={newAppointment.professional}
-                          onChange={(e) => setNewAppointment({ ...newAppointment, professional: e.target.value })}
-                          placeholder="Nome do profissional"
-                        />
+                          onValueChange={(value) => setNewAppointment({ ...newAppointment, professional: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o profissional" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {doctors.length > 0 ? (
+                              doctors.map((doctor) => (
+                                <SelectItem key={doctor._id} value={doctor._id}>
+                                  {doctor.name || (doctor.email ? 
+                                    doctor.email.split(/[@.]/)[0].charAt(0).toUpperCase() + 
+                                    doctor.email.split(/[@.]/)[0].slice(1) : 
+                                    doctor._id)}
+                                </SelectItem>
+                              ))
+                            ) : (
+                              <SelectItem value="" disabled>
+                                Nenhum médico encontrado
+                              </SelectItem>
+                            )}
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div>
                         <Label htmlFor="service">Serviço</Label>
@@ -414,8 +472,13 @@ export default function AppointmentManager() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">Todos</SelectItem>
-                        {professionals.map((prof) => (
-                          <SelectItem key={prof} value={prof}>{prof}</SelectItem>
+                        {doctors.map((doctor) => (
+                          <SelectItem key={doctor._id} value={doctor._id}>
+                            {doctor.name || (doctor.email ? 
+                              doctor.email.split(/[@.]/)[0].charAt(0).toUpperCase() + 
+                              doctor.email.split(/[@.]/)[0].slice(1) : 
+                              doctor._id)}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -454,6 +517,8 @@ export default function AppointmentManager() {
                       onStatusChange={updateStatus}
                       onDelete={handleDeleteClick}
                       onStartMeeting={openJitsiMeeting}
+                      getDoctorName={getDoctorName}
+                      doctors={doctors}
                     />
                   </TabsContent>
                   {["Pending", "Confirmed", "Canceled"].map((status) => (
@@ -463,6 +528,8 @@ export default function AppointmentManager() {
                         onStatusChange={updateStatus}
                         onDelete={handleDeleteClick}
                         onStartMeeting={openJitsiMeeting}
+                        getDoctorName={getDoctorName}
+                        doctors={doctors}
                       />
                     </TabsContent>
                   ))}
@@ -470,8 +537,9 @@ export default function AppointmentManager() {
               </>
             ) : (
               <CalendarView 
-                appointments={appointments} 
+                appointments={filteredAppointments} 
                 onStartMeeting={openJitsiMeeting}
+                doctors={doctors}
               />
             )}
           </div>
@@ -558,7 +626,24 @@ export default function AppointmentManager() {
 }
 
 // Componente de lista de agendamentos
-function AppointmentsList({ appointments, onStatusChange, onDelete, onStartMeeting }) {
+function AppointmentsList({ appointments, onStatusChange, onDelete, onStartMeeting, getDoctorName, doctors }) {
+  // Fallback implementation of getDoctorName in case it's not provided
+  const getDoctor = getDoctorName || ((doctorId) => {
+    const doctor = doctors.find(d => d._id === doctorId)
+    if (!doctor) return doctorId
+    
+    if (doctor.name) return doctor.name
+    
+    // Extract first name from email (before the dot or @ symbol)
+    if (doctor.email) {
+      const emailParts = doctor.email.split(/[@.]/)[0]
+      // Capitalize first letter
+      return emailParts.charAt(0).toUpperCase() + emailParts.slice(1)
+    }
+    
+    return doctorId
+  })
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'Pending': return 'bg-yellow-100 text-yellow-800'
@@ -602,8 +687,10 @@ function AppointmentsList({ appointments, onStatusChange, onDelete, onStartMeeti
                       {new Date(appointment.date).toLocaleString()}
                     </Badge>
                     <Badge variant="outline">
-                      <User className="h-3 w-3 mr-1" />
-                      {appointment.professional}
+                      <div className="text-sm text-gray-500 flex items-center gap-1">
+                        <User className="h-3 w-3" />
+                        {getDoctor(appointment.professional)}
+                      </div>
                     </Badge>
                     <Badge variant="outline"><Tag className="h-3 w-3 mr-1" />
                       {appointment.service}

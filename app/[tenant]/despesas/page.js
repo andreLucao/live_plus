@@ -49,11 +49,13 @@ export default function ExpensesPage() {
   const [deleteConfirmation, setDeleteConfirmation] = useState("")
   const [itemToDelete, setItemToDelete] = useState(null)
   const [expenseType, setExpenseType] = useState("PF")
+  const [doctors, setDoctors] = useState([])
   const { tenant } = useParams()
 
   // Efeito para carregar as despesas ao montar o componente
   useEffect(() => {
     fetchBills()
+    fetchDoctors()
   }, [])
 
   // Efeito para controlar o modo escuro
@@ -260,6 +262,39 @@ export default function ExpensesPage() {
     new Date(bill.date).getFullYear()
   ))].sort((a, b) => b - a)
 
+  // Função para buscar médicos da API
+  const fetchDoctors = async () => {
+    try {
+      const response = await fetch(`/api/${tenant}/users?role=doctor`)
+      if (!response.ok) throw new Error('Failed to fetch doctors')
+      const data = await response.json()
+      console.log('Doctors loaded:', data)
+      // Filter users with role="doctor"
+      const doctorsList = data.filter(user => user.role === "doctor")
+      setDoctors(doctorsList)
+    } catch (error) {
+      console.error("Error loading doctors:", error)
+      setError("Failed to load doctors list")
+    }
+  }
+
+  // Helper function to get doctor name from ID
+  const getDoctorName = (doctorId) => {
+    const doctor = doctors.find(d => d._id === doctorId)
+    if (!doctor) return doctorId
+    
+    if (doctor.name) return doctor.name
+    
+    // Extract first name from email (before the dot or @ symbol)
+    if (doctor.email) {
+      const emailParts = doctor.email.split(/[@.]/)[0]
+      // Capitalize first letter
+      return emailParts.charAt(0).toUpperCase() + emailParts.slice(1)
+    }
+    
+    return doctorId
+  }
+
   // Renderização do estado de carregamento
   if (isLoading) {
     return (
@@ -308,12 +343,30 @@ export default function ExpensesPage() {
                       <div className="space-y-4">
                         <div className="space-y-2">
                           <Label htmlFor="doctor-name-expense">Nome do Médico</Label>
-                          <Input
-                            id="doctor-name-expense"
+                          <Select
                             value={newBill.name}
-                            onChange={(e) => setNewBill({ ...newBill, name: e.target.value })}
-                            placeholder="Digite o nome do médico"
-                          />
+                            onValueChange={(value) => setNewBill({ ...newBill, name: value })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione o médico" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {doctors.length > 0 ? (
+                                doctors.map((doctor) => (
+                                  <SelectItem key={doctor._id} value={doctor._id}>
+                                    {doctor.name || (doctor.email ? 
+                                      doctor.email.split(/[@.]/)[0].charAt(0).toUpperCase() + 
+                                      doctor.email.split(/[@.]/)[0].slice(1) : 
+                                      doctor._id)}
+                                  </SelectItem>
+                                ))
+                              ) : (
+                                <SelectItem value="" disabled>
+                                  Nenhum médico encontrado
+                                </SelectItem>
+                              )}
+                            </SelectContent>
+                          </Select>
                         </div>
 
                         <div className="space-y-2">
@@ -553,9 +606,10 @@ export default function ExpensesPage() {
                                 {bill.paymentType}
                               </Badge>
                             </div>
-                            <span className="text-sm text-gray-600 dark:text-gray-400">
-                              Fornecedor: {bill.supplierName}
-                            </span>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{bill.supplierName}</span>
+                              <span className="text-sm text-gray-500">{getDoctorName(bill.name)}</span>
+                            </div>
                           </div>
                           <div className="flex flex-wrap items-center gap-2 md:gap-4">
                             <Badge variant="secondary" className="bg-[#eaf5fd] text-[#009EE3] dark:bg-blue-900 dark:text-blue-100">
