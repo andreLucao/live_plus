@@ -94,6 +94,54 @@ export function FinancialMetrics() {
   }, [tenant])
 
   useEffect(() => {
+    // Função auxiliar para verificar se uma despesa é de imposto
+    const isTaxExpense = (expense) => {
+      if (!expense) return false;
+      
+      const taxTerms = [
+        'imposto', 'impostos', 
+        'tax', 'taxes', 
+        'tributo', 'tributos',
+        'fiscal', 'fiscais',
+        'irpf', 'irpj', 'inss', 'iss', 'icms', 'pis', 'cofins',
+        'contribuição'
+      ];
+      
+      // Verificar na categoria
+      if (expense.category) {
+        const categoryLower = expense.category.toLowerCase();
+        if (taxTerms.some(term => categoryLower.includes(term))) {
+          return true;
+        }
+      }
+      
+      // Verificar no nome
+      if (expense.name) {
+        const nameLower = expense.name.toLowerCase();
+        if (taxTerms.some(term => nameLower.includes(term))) {
+          return true;
+        }
+      }
+      
+      // Verificar na descrição
+      if (expense.description) {
+        const descriptionLower = expense.description.toLowerCase();
+        if (taxTerms.some(term => descriptionLower.includes(term))) {
+          return true;
+        }
+      }
+      
+      // Verificar no nome do fornecedor
+      if (expense.supplierName) {
+        const supplierLower = expense.supplierName.toLowerCase();
+        if (taxTerms.some(term => supplierLower.includes(term))) {
+          return true;
+        }
+      }
+      
+      return false;
+    };
+    
     const fetchData = async () => {
       setIsLoading(true)
       try {
@@ -116,6 +164,49 @@ export function FinancialMetrics() {
           expensesResponse.json()
         ])
 
+        // Debug: Informações detalhadas sobre os dados de receita
+        console.log('Dados de receita recebidos:', incomesData);
+        if (incomesData.length > 0) {
+          console.log('Exemplo de estrutura de receita:', incomesData[0]);
+          console.log('Tipos de receita encontrados:', [...new Set(incomesData.map(income => income.type))]);
+          console.log('Total de receitas:', incomesData.length);
+          
+          // Contagem por tipo
+          const typeCounts = incomesData.reduce((acc, income) => {
+            const type = income.type || 'sem_tipo';
+            acc[type] = (acc[type] || 0) + 1;
+            return acc;
+          }, {});
+          console.log('Contagem por tipo:', typeCounts);
+        } else {
+          console.log('Nenhum dado de receita encontrado');
+        }
+        
+        // Debug: Informações detalhadas sobre os dados de despesa
+        console.log('Dados de despesa recebidos:', expensesData);
+        if (expensesData.length > 0) {
+          console.log('Exemplo de estrutura de despesa:', expensesData[0]);
+          console.log('Categorias de despesa encontradas:', [...new Set(expensesData.map(expense => expense.category))]);
+          console.log('Tipos de despesa encontrados:', [...new Set(expensesData.map(expense => expense.type))]);
+          console.log('Total de despesas:', expensesData.length);
+          
+          // Contagem por categoria
+          const categoryCounts = expensesData.reduce((acc, expense) => {
+            const category = expense.category || 'sem_categoria';
+            acc[category] = (acc[category] || 0) + 1;
+            return acc;
+          }, {});
+          console.log('Contagem por categoria de despesa:', categoryCounts);
+          
+          // Verificar especificamente despesas de impostos
+          const taxExpenses = expensesData.filter(expense => isTaxExpense(expense));
+          console.log('Despesas de impostos:', taxExpenses);
+          console.log('Total de despesas de impostos:', taxExpenses.length);
+          console.log('Valor total de impostos:', taxExpenses.reduce((sum, expense) => sum + expense.amount, 0));
+        } else {
+          console.log('Nenhum dado de despesa encontrado');
+        }
+        
         // Verificar se os dados estão vazios
         if (!incomesData.length && !expensesData.length) {
           processEmptyData()
@@ -186,12 +277,14 @@ export function FinancialMetrics() {
       periodoLabel = selectedPeriodObj ? selectedPeriodObj.label : 'Período selecionado'
     }
     
+    console.log('Gerando dados vazios para o período:', periodoLabel);
+    
     // Estruturar dados detalhados zerados
     const emptyDetailedData = {
       current: {
         revenue: {
-          sales: 0,
-          services: 0,
+          procedures: 0,
+          appointments: 0,
           otherRevenue: 0,
         },
         deductions: {
@@ -199,14 +292,14 @@ export function FinancialMetrics() {
           cancellations: 0,
         },
         costs: {
-          products: 0,
-          services: 0,
-          operational: 0,
+          products: 0, // Materiais Médicos
+          services: 0, // Material de Limpeza
+          operational: 0, // Outros (Equipamentos, Manutenção)
         },
         expenses: {
-          administrative: 0,
-          sales: 0,
-          financial: 0,
+          administrative: 0, // Salários
+          sales: 0, // Outros (Marketing, Software, Escritório, etc.)
+          financial: 0, // Água/Luz/Internet
         },
         period: periodoLabel,
       },
@@ -229,27 +322,168 @@ export function FinancialMetrics() {
 
   // Função para processar os dados da API
   const processApiData = (incomesData, expensesData, period = 'current') => {
-    // Separar receitas por tipo
-    const vendas = incomesData
-      .filter(income => income.type === 'vendas')
-      .reduce((sum, income) => sum + income.amount, 0)
+    console.log('Processando dados financeiros para o período:', period);
+    console.log('Total de receitas recebidas:', incomesData.length);
     
-    const servicos = incomesData
-      .filter(income => income.type === 'servicos')
-      .reduce((sum, income) => sum + income.amount, 0)
+    // Definir palavras-chave para cada categoria
+    const procedureKeywords = [
+      'cirurgia', 
+      'exame', 
+      'procedimento', 
+      'tratamento',
+      'especializado',
+      'laboratorial',
+      'imagem',
+      'diagnóstico',
+      'terapia',
+      'intervenção'
+    ];
     
-    const outrasReceitas = incomesData
-      .filter(income => income.type !== 'vendas' && income.type !== 'servicos')
-      .reduce((sum, income) => sum + income.amount, 0)
+    const appointmentKeywords = [
+      'consulta', 
+      'atendimento', 
+      'emergência', 
+      'ambulatorial',
+      'visita',
+      'avaliação',
+      'retorno',
+      'acompanhamento',
+      'telemedicina'
+    ];
+    
+    // Função para calcular a pontuação de correspondência para uma categoria
+    const calculateMatchScore = (income, keywords) => {
+      let score = 0;
+      
+      // Verificar correspondências no tipo (peso maior)
+      keywords.forEach(keyword => {
+        if (income.type?.toLowerCase().includes(keyword.toLowerCase())) {
+          score += 3;
+        }
+      });
+      
+      // Verificar correspondências na categoria
+      keywords.forEach(keyword => {
+        if (income.category?.toLowerCase().includes(keyword.toLowerCase())) {
+          score += 2;
+        }
+      });
+      
+      // Verificar correspondências na descrição
+      keywords.forEach(keyword => {
+        if (income.description?.toLowerCase()?.includes(keyword.toLowerCase())) {
+          score += 1;
+        }
+      });
+      
+      return score;
+    };
+    
+    // Categorizar cada item de receita com base na pontuação
+    const categorizedIncomes = incomesData.map(income => {
+      // Compatibilidade com categorias antigas
+      if (income.type === 'vendas') {
+        return { ...income, category_type: 'procedimento' };
+      }
+      
+      if (income.type === 'servicos') {
+        return { ...income, category_type: 'consulta' };
+      }
+      
+      // Calcular pontuações para cada categoria
+      const procedureScore = calculateMatchScore(income, procedureKeywords);
+      const appointmentScore = calculateMatchScore(income, appointmentKeywords);
+      
+      // Determinar a categoria com base na pontuação mais alta
+      if (procedureScore > appointmentScore) {
+        return { ...income, category_type: 'procedimento' };
+      } else if (appointmentScore > procedureScore) {
+        return { ...income, category_type: 'consulta' };
+      } else if (procedureScore > 0) {
+        // Se as pontuações forem iguais mas maiores que zero, considerar como procedimento
+        return { ...income, category_type: 'procedimento' };
+      } else {
+        // Se não houver correspondência, considerar como outra receita
+        return { ...income, category_type: 'outro' };
+      }
+    });
+    
+    // Separar por categoria e calcular totais
+    const procedimentosItems = categorizedIncomes.filter(income => income.category_type === 'procedimento');
+    const procedimentos = procedimentosItems.reduce((sum, income) => sum + income.amount, 0);
+    console.log('Receitas de Procedimentos:', procedimentosItems.length, 'itens, total:', procedimentos);
+    
+    const consultasItems = categorizedIncomes.filter(income => income.category_type === 'consulta');
+    const consultas = consultasItems.reduce((sum, income) => sum + income.amount, 0);
+    console.log('Receitas de Consultas:', consultasItems.length, 'itens, total:', consultas);
+    
+    const outrasReceitasItems = categorizedIncomes.filter(income => income.category_type === 'outro');
+    const outrasReceitas = outrasReceitasItems.reduce((sum, income) => sum + income.amount, 0);
+    console.log('Outras Receitas:', outrasReceitasItems.length, 'itens, total:', outrasReceitas);
     
     // Calcular receita bruta
-    const receitaBruta = vendas + servicos + outrasReceitas
+    const receitaBruta = procedimentos + consultas + outrasReceitas
     
-    // Calcular deduções - usando dados reais do banco
-    const impostos = incomesData
-      .filter(income => income.deduction_type === 'impostos')
-      .reduce((sum, income) => sum + income.deduction_amount, 0)
+    // Função auxiliar para verificar se uma despesa é de imposto
+    const isTaxExpense = (expense) => {
+      if (!expense) return false;
+      
+      const taxTerms = [
+        'imposto', 'impostos', 
+        'tax', 'taxes', 
+        'tributo', 'tributos',
+        'fiscal', 'fiscais',
+        'irpf', 'irpj', 'inss', 'iss', 'icms', 'pis', 'cofins',
+        'contribuição'
+      ];
+      
+      // Verificar na categoria
+      if (expense.category) {
+        const categoryLower = expense.category.toLowerCase();
+        if (taxTerms.some(term => categoryLower.includes(term))) {
+          return true;
+        }
+      }
+      
+      // Verificar no nome
+      if (expense.name) {
+        const nameLower = expense.name.toLowerCase();
+        if (taxTerms.some(term => nameLower.includes(term))) {
+          return true;
+        }
+      }
+      
+      // Verificar na descrição
+      if (expense.description) {
+        const descriptionLower = expense.description.toLowerCase();
+        if (taxTerms.some(term => descriptionLower.includes(term))) {
+          return true;
+        }
+      }
+      
+      // Verificar no nome do fornecedor
+      if (expense.supplierName) {
+        const supplierLower = expense.supplierName.toLowerCase();
+        if (taxTerms.some(term => supplierLower.includes(term))) {
+          return true;
+        }
+      }
+      
+      return false;
+    };
     
+    // Calcular impostos a partir das despesas com categoria de impostos
+    const taxExpenses = expensesData.filter(expense => isTaxExpense(expense));
+    const impostos = taxExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+    
+    console.log('Despesas de impostos encontradas:', taxExpenses.length);
+    if (taxExpenses.length > 0) {
+      console.log('Exemplos de despesas de impostos:', taxExpenses.slice(0, 3));
+      console.log('Categorias de impostos encontradas:', [...new Set(taxExpenses.map(expense => expense.category))]);
+    }
+    console.log('Total de impostos calculado:', impostos);
+    
+    // Calcular cancelamentos a partir dos dados de receita
     const cancelamentos = incomesData
       .filter(income => income.deduction_type === 'cancelamentos')
       .reduce((sum, income) => sum + income.deduction_amount, 0)
@@ -257,37 +491,110 @@ export function FinancialMetrics() {
     // Calcular receita líquida
     const receitaLiquida = receitaBruta - Math.abs(impostos) - Math.abs(cancelamentos)
     
-    // Separar custos por categoria
-    const custosProdutos = expensesData
-      .filter(expense => expense.type === 'produtos')
-      .reduce((sum, expense) => sum + expense.amount, 0)
+    // Separar custos por categoria - excluindo impostos para não contar duas vezes
+    const custosMateriais = expensesData
+      .filter(expense => 
+        (expense.category?.toLowerCase() === 'materiais' || 
+         expense.category?.toLowerCase() === 'materiais médicos' ||
+         expense.category?.toLowerCase().includes('material médico')) &&
+        !isTaxExpense(expense)
+      )
+      .reduce((sum, expense) => sum + expense.amount, 0);
     
-    const custosServicos = expensesData
-      .filter(expense => expense.type === 'servicos')
-      .reduce((sum, expense) => sum + expense.amount, 0)
+    const custosLimpeza = expensesData
+      .filter(expense => 
+        (expense.category?.toLowerCase() === 'limpeza' || 
+         expense.category?.toLowerCase().includes('material de limpeza')) &&
+        !isTaxExpense(expense)
+      )
+      .reduce((sum, expense) => sum + expense.amount, 0);
     
-    const custosOperacionais = expensesData
-      .filter(expense => expense.type === 'operacional')
-      .reduce((sum, expense) => sum + expense.amount, 0)
+    const custosOutros = expensesData
+      .filter(expense => 
+        (expense.category?.toLowerCase() === 'equipamentos' || 
+         expense.category?.toLowerCase() === 'manutencao' ||
+         expense.category?.toLowerCase() === 'manutenção' ||
+         expense.category?.toLowerCase().includes('equipamento') ||
+         expense.category?.toLowerCase().includes('manutençã')) &&
+        !isTaxExpense(expense)
+      )
+      .reduce((sum, expense) => sum + expense.amount, 0);
+    
+    // Identificar despesas que não se encaixam em nenhuma categoria específica de custos
+    const custosCategorias = ['materiais', 'materiais médicos', 'material médico', 'limpeza', 'material de limpeza', 
+                             'equipamentos', 'manutencao', 'manutenção', 'equipamento', 'manutençã'];
+    
+    const custosNaoCategorizados = expensesData
+      .filter(expense => 
+        !isTaxExpense(expense) && 
+        !custosCategorias.some(cat => 
+          expense.category?.toLowerCase() === cat || 
+          expense.category?.toLowerCase().includes(cat)
+        ) &&
+        !['salarios', 'salários', 'salário', 'utilities', 'água', 'luz', 'internet', 'água/luz/internet',
+          'marketing', 'software', 'software/sistema', 'escritorio', 'material de escritório', 'outros', 'outro'].some(cat => 
+          expense.category?.toLowerCase() === cat || 
+          expense.category?.toLowerCase().includes(cat)
+        )
+      )
+      .reduce((sum, expense) => sum + expense.amount, 0);
+    
+    // Total de custos
+    const custosTotais = custosMateriais + custosLimpeza + custosOutros + custosNaoCategorizados;
+    
+    console.log('Custos - Materiais Médicos:', custosMateriais);
+    console.log('Custos - Material de Limpeza:', custosLimpeza);
+    console.log('Custos - Outros (Equipamentos, Manutenção):', custosOutros);
+    console.log('Custos - Não Categorizados:', custosNaoCategorizados);
+    console.log('Total de Custos:', custosTotais);
     
     // Calcular lucro bruto
-    const lucroBruto = receitaLiquida - custosProdutos - custosServicos - custosOperacionais
+    const lucroBruto = receitaLiquida - custosTotais;
     
     // Separar despesas por categoria
-    const despesasAdministrativas = expensesData
-      .filter(expense => expense.type === 'administrativo')
-      .reduce((sum, expense) => sum + expense.amount, 0)
+    const despesasSalarios = expensesData
+      .filter(expense => 
+        (expense.category?.toLowerCase() === 'salarios' || 
+         expense.category?.toLowerCase() === 'salários' ||
+         expense.category?.toLowerCase().includes('salário')) &&
+        !isTaxExpense(expense)
+      )
+      .reduce((sum, expense) => sum + expense.amount, 0);
     
-    const despesasVendas = expensesData
-      .filter(expense => expense.type === 'vendas')
-      .reduce((sum, expense) => sum + expense.amount, 0)
+    const despesasUtilities = expensesData
+      .filter(expense => 
+        (expense.category?.toLowerCase() === 'utilities' || 
+         expense.category?.toLowerCase().includes('água') ||
+         expense.category?.toLowerCase().includes('luz') ||
+         expense.category?.toLowerCase().includes('internet') ||
+         expense.category?.toLowerCase().includes('água/luz/internet')) &&
+        !isTaxExpense(expense)
+      )
+      .reduce((sum, expense) => sum + expense.amount, 0);
     
-    const despesasFinanceiras = expensesData
-      .filter(expense => expense.type === 'financeiro')
-      .reduce((sum, expense) => sum + expense.amount, 0)
+    const despesasOutras = expensesData
+      .filter(expense => 
+        (expense.category?.toLowerCase() === 'marketing' || 
+         expense.category?.toLowerCase() === 'software' ||
+         expense.category?.toLowerCase().includes('software/sistema') ||
+         expense.category?.toLowerCase() === 'escritorio' ||
+         expense.category?.toLowerCase().includes('material de escritório') ||
+         expense.category?.toLowerCase() === 'outros' ||
+         expense.category?.toLowerCase().includes('outro')) &&
+        !isTaxExpense(expense)
+      )
+      .reduce((sum, expense) => sum + expense.amount, 0);
+    
+    // Total de despesas
+    const despesasTotais = despesasSalarios + despesasUtilities + despesasOutras;
+    
+    console.log('Despesas - Salários:', despesasSalarios);
+    console.log('Despesas - Água/Luz/Internet:', despesasUtilities);
+    console.log('Despesas - Outras:', despesasOutras);
+    console.log('Total de Despesas:', despesasTotais);
     
     // Calcular lucro líquido
-    const lucroLiquido = lucroBruto - despesasAdministrativas - despesasVendas - despesasFinanceiras
+    const lucroLiquido = lucroBruto - despesasTotais;
     
     // Determinar o período para exibição
     let periodoLabel = 'Período atual'
@@ -307,8 +614,8 @@ export function FinancialMetrics() {
     const detailedData = {
       current: {
         revenue: {
-          sales: vendas,
-          services: servicos,
+          procedures: procedimentos,
+          appointments: consultas,
           otherRevenue: outrasReceitas,
         },
         deductions: {
@@ -316,19 +623,24 @@ export function FinancialMetrics() {
           cancellations: -cancelamentos,
         },
         costs: {
-          products: -custosProdutos,
-          services: -custosServicos,
-          operational: -custosOperacionais,
+          products: -custosMateriais,     // Materiais Médicos
+          services: -custosLimpeza,       // Material de Limpeza
+          operational: -(custosOutros + custosNaoCategorizados),  // Outros (Equipamentos, Manutenção, etc.)
         },
         expenses: {
-          administrative: -despesasAdministrativas,
-          sales: -despesasVendas,
-          financial: -despesasFinanceiras,
+          administrative: -despesasSalarios,  // Salários
+          sales: -despesasUtilities,          // Água/Luz/Internet
+          financial: -despesasOutras,         // Outros (Marketing, Software, etc.)
         },
         period: periodoLabel,
       },
       hasData: true
     }
+    
+    // Adicionar informações de debug sobre impostos
+    console.log('Dados detalhados - impostos:', detailedData.current.deductions.taxes);
+    console.log('Receita bruta:', receitaBruta);
+    console.log('Receita líquida após deduções:', receitaLiquida);
     
     setDetailedData(detailedData)
     
@@ -337,9 +649,9 @@ export function FinancialMetrics() {
       { category: "Receita Bruta", value: receitaBruta },
       { category: "(-) Deduções", value: -(impostos + cancelamentos) },
       { category: "Receita Líquida", value: receitaLiquida },
-      { category: "(-) Custos Totais", value: -(custosProdutos + custosServicos + custosOperacionais) },
+      { category: "(-) Custos Totais", value: -(custosMateriais + custosLimpeza + custosOutros + custosNaoCategorizados) },
       { category: "Lucro Bruto", value: lucroBruto },
-      { category: "(-) Despesas Totais", value: -(despesasAdministrativas + despesasVendas + despesasFinanceiras) },
+      { category: "(-) Despesas Totais", value: -(despesasSalarios + despesasUtilities + despesasOutras) },
       { category: "Lucro Líquido", value: lucroLiquido },
     ])
   }
@@ -383,7 +695,7 @@ export function FinancialMetrics() {
   const dreData = detailedData.current;
 
   // Cálculos principais
-  const grossRevenue = dreData.revenue.sales + dreData.revenue.services + dreData.revenue.otherRevenue
+  const grossRevenue = dreData.revenue.procedures + dreData.revenue.appointments + dreData.revenue.otherRevenue
   const totalDeductions = Object.values(dreData.deductions).reduce((a, b) => a + b, 0)
   const netRevenue = grossRevenue + totalDeductions
   const totalCosts = Object.values(dreData.costs).reduce((a, b) => a + b, 0)
@@ -458,7 +770,7 @@ export function FinancialMetrics() {
                   <div className="space-y-2">
                     <h4 className="font-medium">Receita Bruta</h4>
                     <p className="text-sm text-muted-foreground">
-                      Total de receitas antes das deduções, incluindo vendas, serviços e outras receitas.
+                      Total de receitas antes das deduções, incluindo procedimentos, consultas e outras receitas.
                     </p>
                   </div>
                 </PopoverContent>
@@ -593,18 +905,18 @@ export function FinancialMetrics() {
                 <TableCell className="text-right font-bold">{formatCurrency(grossRevenue)}</TableCell>
               </TableRow>
               <TableRow>
-                <TableCell className="pl-8">Vendas</TableCell>
-                <TableCell className="text-right">{formatCurrency(dreData.revenue.sales)}</TableCell>
+                <TableCell className="pl-8">Procedimentos</TableCell>
+                <TableCell className="text-right">{formatCurrency(dreData.revenue.procedures)}</TableCell>
                 <TableCell className="text-right">
-                  {grossRevenue === 0 ? '0.0%' : ((dreData.revenue.sales / grossRevenue) * 100).toFixed(1) + '%'}
+                  {grossRevenue === 0 ? '0.0%' : ((dreData.revenue.procedures / grossRevenue) * 100).toFixed(1) + '%'}
                 </TableCell>
                 <TableCell></TableCell>
               </TableRow>
               <TableRow>
-                <TableCell className="pl-8">Serviços</TableCell>
-                <TableCell className="text-right">{formatCurrency(dreData.revenue.services)}</TableCell>
+                <TableCell className="pl-8">Consultas</TableCell>
+                <TableCell className="text-right">{formatCurrency(dreData.revenue.appointments)}</TableCell>
                 <TableCell className="text-right">
-                  {grossRevenue === 0 ? '0.0%' : ((dreData.revenue.services / grossRevenue) * 100).toFixed(1) + '%'}
+                  {grossRevenue === 0 ? '0.0%' : ((dreData.revenue.appointments / grossRevenue) * 100).toFixed(1) + '%'}
                 </TableCell>
                 <TableCell></TableCell>
               </TableRow>
@@ -663,7 +975,7 @@ export function FinancialMetrics() {
                 <TableCell className="text-right text-red-600 font-bold">{formatCurrency(totalCosts)}</TableCell>
               </TableRow>
               <TableRow>
-                <TableCell className="pl-8">Custos de Produtos</TableCell>
+                <TableCell className="pl-8">Materiais Médicos</TableCell>
                 <TableCell className="text-right text-red-600">{formatCurrency(dreData.costs.products)}</TableCell>
                 <TableCell className="text-right">
                   {grossRevenue === 0 ? '0.0%' : ((dreData.costs.products / grossRevenue) * 100).toFixed(1) + '%'}
@@ -671,7 +983,7 @@ export function FinancialMetrics() {
                 <TableCell></TableCell>
               </TableRow>
               <TableRow>
-                <TableCell className="pl-8">Custos de Serviços</TableCell>
+                <TableCell className="pl-8">Material de Limpeza</TableCell>
                 <TableCell className="text-right text-red-600">{formatCurrency(dreData.costs.services)}</TableCell>
                 <TableCell className="text-right">
                   {grossRevenue === 0 ? '0.0%' : ((dreData.costs.services / grossRevenue) * 100).toFixed(1) + '%'}
@@ -679,7 +991,7 @@ export function FinancialMetrics() {
                 <TableCell></TableCell>
               </TableRow>
               <TableRow>
-                <TableCell className="pl-8">Custos Operacionais</TableCell>
+                <TableCell className="pl-8">Outros</TableCell>
                 <TableCell className="text-right text-red-600">
                   {formatCurrency(dreData.costs.operational)}
                 </TableCell>
@@ -705,7 +1017,7 @@ export function FinancialMetrics() {
                 <TableCell className="text-right text-red-600 font-bold">{formatCurrency(totalExpenses)}</TableCell>
               </TableRow>
               <TableRow>
-                <TableCell className="pl-8">Despesas Administrativas</TableCell>
+                <TableCell className="pl-8">Salários</TableCell>
                 <TableCell className="text-right text-red-600">
                   {formatCurrency(dreData.expenses.administrative)}
                 </TableCell>
@@ -715,15 +1027,17 @@ export function FinancialMetrics() {
                 <TableCell></TableCell>
               </TableRow>
               <TableRow>
-                <TableCell className="pl-8">Despesas com Vendas</TableCell>
-                <TableCell className="text-right text-red-600">{formatCurrency(dreData.expenses.sales)}</TableCell>
+                <TableCell className="pl-8">Água/Luz/Internet</TableCell>
+                <TableCell className="text-right text-red-600">
+                  {formatCurrency(dreData.expenses.sales)}
+                </TableCell>
                 <TableCell className="text-right">
                   {grossRevenue === 0 ? '0.0%' : ((dreData.expenses.sales / grossRevenue) * 100).toFixed(1) + '%'}
                 </TableCell>
                 <TableCell></TableCell>
               </TableRow>
               <TableRow>
-                <TableCell className="pl-8">Despesas Financeiras</TableCell>
+                <TableCell className="pl-8">Outros</TableCell>
                 <TableCell className="text-right text-red-600">
                   {formatCurrency(dreData.expenses.financial)}
                 </TableCell>
