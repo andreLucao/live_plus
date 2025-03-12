@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
-import { Plus, Trash2, Edit2, Save, X, Mail, Calendar as CalendarIcon, User, AlertCircle, Shield, Clock } from "lucide-react"
+import { Trash2, Edit2, Save, X, Mail, Calendar as CalendarIcon, User, AlertCircle, Shield, Clock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -35,7 +35,6 @@ export default function UsersPage() {
   const [darkMode, setDarkMode] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState("")
-  const [isModalOpen, setIsModalOpen] = useState(false)
   const [emailFilter, setEmailFilter] = useState("")
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [deleteConfirmation, setDeleteConfirmation] = useState("")
@@ -69,36 +68,6 @@ export default function UsersPage() {
       setError("Falha ao carregar usuários. Por favor, tente novamente mais tarde.")
     } finally {
       setIsLoading(false)
-    }
-  }
-
-  // Function to add a new user
-  const addUser = async (e) => {
-    e.preventDefault()
-    if (newUser.email && newUser.role && newUser.status) {
-      try {
-        const response = await fetch(`/api/${tenant}/users`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            ...newUser,
-            tenantPath: tenant,
-          }),
-        })
-
-        if (!response.ok) throw new Error('Failed to add user')
-        await fetchUsers()
-        setNewUser({ 
-          email: "", 
-          role: "user", 
-          status: "Active"
-        })
-        setIsModalOpen(false)
-        setError("")
-      } catch (error) {
-        console.error('Error adding user:', error)
-        setError("Falha ao adicionar usuário. Por favor, tente novamente.")
-      }
     }
   }
 
@@ -256,67 +225,6 @@ export default function UsersPage() {
                   Total: {filteredUsers.length} usuários
                 </span>
               </div>
-
-              {/* Add user modal - Moved to header */}
-              <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-                <DialogTrigger asChild>
-                  <Button className="bg-[#009EE3] hover:bg-[#0080B7] text-white">
-                    <Plus className="mr-2 h-4 w-4" /> Novo Usuário
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[500px]">
-                  <DialogHeader>
-                    <DialogTitle className="text-2xl font-bold">Adicionar Usuário</DialogTitle>
-                  </DialogHeader>
-                  <form onSubmit={addUser} className="space-y-4">
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="user-email">Email</Label>
-                        <Input
-                          id="user-email"
-                          type="email"
-                          value={newUser.email}
-                          onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                          placeholder="email@exemplo.com"
-                          required
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="user-role">Função</Label>
-                        <Select value={newUser.role} onValueChange={(value) => setNewUser({ ...newUser, role: value })}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione a função" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="user">Usuário</SelectItem>
-                            <SelectItem value="doctor">Médico</SelectItem>
-                            <SelectItem value="admin">Administrador</SelectItem>
-                            <SelectItem value="owner">Proprietário</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="user-status">Status</Label>
-                        <Select value={newUser.status} onValueChange={(value) => setNewUser({ ...newUser, status: value })}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione o status" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Active">Ativo</SelectItem>
-                            <SelectItem value="Inactive">Inativo</SelectItem>
-                            <SelectItem value="Archived">Arquivado</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <Button type="submit" className="w-full bg-[#009EE3] hover:bg-[#0080B7] text-white">
-                      Adicionar Usuário
-                    </Button>
-                  </form>
-                </DialogContent>
-              </Dialog>
             </div>
 
             {/* Error message */}

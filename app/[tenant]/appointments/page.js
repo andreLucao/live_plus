@@ -1,3 +1,5 @@
+// app/[tenant]/appointments/page.js
+
 "use client"
 
 import { useState, useEffect } from "react"

@@ -20,6 +20,9 @@ export function CustomerMetrics() {
   const [selectedDoctorData, setSelectedDoctorData] = useState(null)
   const [showModal, setShowModal] = useState(false)
   const [clientMetricsData, setClientMetricsData] = useState([])
+  const [selectedDoctor, setSelectedDoctor] = useState(null)
+  const [appointments, setAppointments] = useState([])
+  const [professionals, setProfessionals] = useState([])
   const { tenant } = useParams()
 
   // Definir esquemas de cores para os gráficos
@@ -41,51 +44,86 @@ export function CustomerMetrics() {
     return new Intl.NumberFormat('pt-BR').format(value)
   }
 
+  // Fetch dos médicos (profissionais)
+  const fetchProfessionals = async () => {
+    try {
+      const response = await fetch(`/api/${tenant}/users?role=doctor`)
+      if (!response.ok) throw new Error('Failed to fetch professionals')
+      const data = await response.json()
+      console.log('Professionals loaded:', data)
+      const professionalsList = data.filter(user => user.role === "doctor")
+      setProfessionals(professionalsList)
+      return professionalsList
+    } catch (error) {
+      console.error("Error loading professionals:", error)
+      return []
+    }
+  }
+
+  // Fetch dos agendamentos
+  const fetchAppointments = async () => {
+    try {
+      setIsLoading(true)
+      let url = `/api/${tenant}/appointments`
+      const response = await fetch(url)
+      if (!response.ok) throw new Error('Failed to fetch appointments')
+      const data = await response.json()
+      console.log('Appointments loaded:', data)
+      setAppointments(data)
+      return data
+    } catch (error) {
+      console.error("Error loading appointments:", error)
+      return []
+    }
+  }
+
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Busca dados de clientes, transações, médicos, atendimentos e usuários
-        console.log('Fetching data for tenant:', tenant);
+        // Busca profissionais e agendamentos primeiro
+        const professionalsList = await fetchProfessionals()
+        const appointmentsData = await fetchAppointments()
         
-        const [clientsResponse, incomesResponse, doctorsResponse, appointmentsResponse, usersResponse] = await Promise.all([
+        // Busca dados adicionais de clientes, transações, etc.
+        console.log('Fetching data for tenant:', tenant)
+        
+        const [clientsResponse, incomesResponse, usersResponse, proceduresResponse] = await Promise.all([
           fetch(`/api/${tenant}/patients`),
           fetch(`/api/${tenant}/income`),
-          fetch(`/api/${tenant}/users?role=doctor`),
-          fetch(`/api/${tenant}/appointments`),
-          fetch(`/api/${tenant}/users?role=user`)
-        ]);
+          fetch(`/api/${tenant}/users?role=user`),
+          fetch(`/api/${tenant}/procedures`)
+        ])
 
-        if (!clientsResponse.ok || !incomesResponse.ok || !doctorsResponse.ok || !appointmentsResponse.ok || !usersResponse.ok) {
+        if (!clientsResponse.ok || !incomesResponse.ok || !usersResponse.ok || !proceduresResponse.ok) {
           console.error('API response not OK:', {
             clients: clientsResponse.status,
             incomes: incomesResponse.status,
-            doctors: doctorsResponse.status,
-            appointments: appointmentsResponse.status,
-            users: usersResponse.status
-          });
-          throw new Error('Failed to fetch data');
+            users: usersResponse.status,
+            procedures: proceduresResponse.status
+          })
+          throw new Error('Failed to fetch data')
         }
 
-        const [clientsData, incomesData, doctorsData, appointmentsData, usersData] = await Promise.all([
+        const [clientsData, incomesData, usersData, proceduresData] = await Promise.all([
           clientsResponse.json(),
           incomesResponse.json(),
-          doctorsResponse.json(),
-          appointmentsResponse.json(),
-          usersResponse.json()
-        ]);
+          usersResponse.json(),
+          proceduresResponse.json()
+        ])
 
         console.log('API Data received:', {
           clients: clientsData.length,
           incomes: incomesData.length,
-          doctors: doctorsData.length,
           appointments: appointmentsData.length,
-          users: usersData.length
-        });
+          users: usersData.length,
+          procedures: proceduresData.length
+        })
         
         // Log sample data to verify structure
-        if (incomesData.length > 0) console.log('Sample income:', incomesData[0]);
-        if (doctorsData.length > 0) console.log('Sample doctor:', doctorsData[0]);
-        if (appointmentsData.length > 0) console.log('Sample appointment:', appointmentsData[0]);
+        if (incomesData.length > 0) console.log('Sample income:', incomesData[0])
+        if (professionalsList.length > 0) console.log('Sample professional:', professionalsList[0])
+        if (appointmentsData.length > 0) console.log('Sample appointment:', appointmentsData[0])
+        if (proceduresData.length > 0) console.log('Sample procedure:', proceduresData[0])
         
         const today = new Date()
         const currentMonth = new Date(today.getFullYear(), today.getMonth(), 1)
@@ -173,68 +211,78 @@ export function CustomerMetrics() {
           }
         ])
 
-        // Processar dados para métricas por médico
-        // Filtrar apenas os usuários com role="doctor"
-        const doctors = doctorsData.filter(user => user.role === "doctor")
-        console.log('Filtered doctors:', doctors.length)
+        // ALTERAÇÃO PRINCIPAL: Identificar profissionais únicos nos agendamentos
+        // Extrair nomes de profissionais únicos dos agendamentos
+        const uniqueProfessionalNames = [...new Set(appointmentsData.map(appt => appt.professional))].filter(Boolean);
+        console.log('Unique professional names from appointments:', uniqueProfessionalNames);
 
-        // Calcular receita por médico
-        const doctorRevenues = doctors.map(doctor => {
-          // Identificar o ID do médico (no formato ObjectId como string)
-          const doctorId = doctor._id.$oid || doctor._id.toString() || doctor._id
+        // Processar dados para métricas por médico (agora usando o campo professional)
+        const professionalRevenues = uniqueProfessionalNames.map(professionalName => {
+          // Filtrar transações associadas a este profissional usando professional no income
+          const professionalIncomes = incomesData.filter(income => 
+            income.professional === professionalName
+          );
           
-          // Filtrar transações associadas a este médico usando userId no income
-          const doctorIncomes = incomesData.filter(income => {
-            const incomeUserId = income.userId?.$oid || income.userId?.toString() || income.userId
-            return incomeUserId === doctorId
-          })
-          
-          console.log(`Doctor ${doctor.name || doctor.email} has ${doctorIncomes.length} incomes`)
+          console.log(`Professional ${professionalName} has ${professionalIncomes.length} incomes`);
           
           // Calcular receita total
-          const totalRevenue = doctorIncomes.reduce((sum, income) => sum + income.amount, 0)
+          const totalRevenue = professionalIncomes.reduce((sum, income) => sum + income.amount, 0);
           
           // Contar pacientes únicos
-          const uniquePatients = new Set(doctorIncomes.map(income => income.clientId)).size
+          const uniquePatients = new Set(professionalIncomes.map(income => income.clientId)).size;
           
           return {
-            id: doctorId,
-            name: doctor.name || `Dr. ${doctor.email?.split('@')[0]}`,
+            name: professionalName,
             revenue: totalRevenue,
             patients: uniquePatients
-          }
-        }).sort((a, b) => b.revenue - a.revenue) // Ordenar por receita, do maior para o menor
+          };
+        }).sort((a, b) => b.revenue - a.revenue); // Ordenar por receita, do maior para o menor
 
-        console.log('Doctor revenues calculated:', doctorRevenues)
-        setDoctorRevenueData(doctorRevenues)
+        console.log('Professional revenues calculated:', professionalRevenues);
+        setDoctorRevenueData(professionalRevenues);
 
-        // Processar dados de atendimentos por médico
-        const doctorAppointments = doctors.map(doctor => {
-          const doctorId = doctor._id.$oid || doctor._id.toString() || doctor._id
+        // Processar dados de agendamentos por profissional
+        const professionalAppointments = uniqueProfessionalNames.map(professionalName => {
+          // Filtrar agendamentos deste profissional usando o campo professional
+          const professionalAppts = appointmentsData.filter(appt => 
+            appt.professional === professionalName
+          );
           
-          // Filtrar atendimentos deste médico
-          const doctorAppts = appointmentsData.filter(appt => {
-            const apptDoctorId = appt.professional?.$oid || appt.professional?.toString() || appt.professional
-            return apptDoctorId === doctorId
-          })
+          console.log(`Professional ${professionalName} has ${professionalAppts.length} appointments`);
           
-          console.log(`Doctor ${doctor.name || doctor.email} has ${doctorAppts.length} appointments`)
+          // Contar agendamentos por status
+          const pendingAppointments = professionalAppts.filter(appt => appt.status === 'Pending').length;
+          const confirmedAppointments = professionalAppts.filter(appt => appt.status === 'Confirmed').length;
+          const canceledAppointments = professionalAppts.filter(appt => appt.status === 'Canceled').length;
           
-          // Contar consultas e procedimentos
-          const consultations = doctorAppts.filter(appt => appt.type === 'consultation').length
-          const procedures = doctorAppts.filter(appt => appt.type === 'procedure').length
+          // Por tipo de serviço (usando o campo service)
+          const consultations = professionalAppts.filter(appt => 
+            appt.service?.includes('Consulta') || appt.service?.includes('consulta')
+          ).length;
+          
+          const procedures = professionalAppts.filter(appt => 
+            appt.service?.includes('Procedimento') || 
+            appt.service?.includes('Exame') || 
+            appt.service?.includes('procedimento') || 
+            appt.service?.includes('exame')
+          ).length;
+          
+          const otherServices = professionalAppts.length - consultations - procedures;
           
           return {
-            id: doctorId,
-            name: doctor.name || `Dr. ${doctor.email?.split('@')[0]}`,
+            name: professionalName,
             consultations,
             procedures,
-            total: consultations + procedures
-          }
-        }).sort((a, b) => b.total - a.total) // Ordenar por total de atendimentos, do maior para o menor
+            otherServices,
+            pendingAppointments,
+            confirmedAppointments,
+            canceledAppointments,
+            total: professionalAppts.length,
+          };
+        }).sort((a, b) => b.total - a.total); // Ordenar por total de atendimentos, do maior para o menor
 
-        console.log('Doctor appointments calculated:', doctorAppointments)
-        setDoctorAppointmentsData(doctorAppointments)
+        console.log('Professional appointments calculated:', professionalAppointments);
+        setDoctorAppointmentsData(professionalAppointments);
 
         // Calcular métricas de clientes para o novo gráfico
         // Novos clientes (usuários com role="user" criados nos últimos 30 dias)
@@ -286,32 +334,46 @@ export function CustomerMetrics() {
             value: Math.round(retentionRate),
             color: CLIENT_METRICS_COLORS[2]
           }
-        ]
+        ];
 
-        console.log('Setting client metrics data:', clientMetricsDataArray)
-        setClientMetricsData(clientMetricsDataArray)
+        console.log('Setting client metrics data:', clientMetricsDataArray);
+        setClientMetricsData(clientMetricsDataArray);
 
       } catch (error) {
-        console.error('Erro ao buscar dados:', error)
+        console.error('Erro ao buscar dados:', error);
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
-    }
+    };
 
-    fetchData()
-  }, [tenant])
+    fetchData();
+  }, [tenant]);
 
   const calculateChange = (current, previous) => {
-    if (!previous) return "+0"
-    const change = ((current - previous) / previous) * 100
-    return change >= 0 ? `+${change.toFixed(1)}` : change.toFixed(1)
-  }
+    if (!previous) return "+0";
+    const change = ((current - previous) / previous) * 100;
+    return change >= 0 ? `+${change.toFixed(1)}` : change.toFixed(1);
+  };
 
   // Função para abrir modal com detalhes do médico
   const handleDoctorClick = (doctor) => {
-    setSelectedDoctorData(doctor)
-    setShowModal(true)
-  }
+    setSelectedDoctorData(doctor);
+    setShowModal(true);
+  };
+
+  // Função para selecionar médico
+  const handleDoctorSelect = (doctorName) => {
+    setSelectedDoctor(doctorName);
+  };
+
+  // Dados filtrados por médico selecionado
+  const filteredDoctorRevenueData = selectedDoctor
+    ? doctorRevenueData.filter(doctor => doctor.name === selectedDoctor)
+    : doctorRevenueData;
+
+  const filteredDoctorAppointmentsData = selectedDoctor
+    ? doctorAppointmentsData.filter(doctor => doctor.name === selectedDoctor)
+    : doctorAppointmentsData;
 
   // Componente de loading
   if (isLoading) {
@@ -352,7 +414,7 @@ export function CustomerMetrics() {
           </div>
         </TabsContent>
       </Tabs>
-    )
+    );
   }
 
   return (
@@ -431,6 +493,19 @@ export function CustomerMetrics() {
       
       {/* Aba de Métricas por Médico */}
       <TabsContent value="doctors" className="space-y-4">
+        <div className="flex justify-end">
+          <select
+            value={selectedDoctor || ''}
+            onChange={(e) => handleDoctorSelect(e.target.value)}
+            className="p-2 border rounded"
+          >
+            <option value="">Todos os Médicos</option>
+            {doctorRevenueData.map(doctor => (
+              <option key={doctor.name} value={doctor.name}>{doctor.name}</option>
+            ))}
+          </select>
+        </div>
+        
         <div className="grid gap-4 md:grid-cols-2">
           {/* Card de Receita por Médico */}
           <Card className="col-span-1">
@@ -463,7 +538,7 @@ export function CustomerMetrics() {
                 {chartType === "bar" ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
-                      data={doctorRevenueData.slice(0, 5)}
+                      data={filteredDoctorRevenueData.slice(0, 5)}
                       margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" />
@@ -483,7 +558,7 @@ export function CustomerMetrics() {
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
-                        data={doctorRevenueData.slice(0, 5)}
+                        data={filteredDoctorRevenueData.slice(0, 5)}
                         cx="50%"
                         cy="50%"
                         labelLine={false}
@@ -494,7 +569,7 @@ export function CustomerMetrics() {
                         label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
                         onClick={(data) => handleDoctorClick(data.payload)}
                       >
-                        {doctorRevenueData.slice(0, 5).map((entry, index) => (
+                        {filteredDoctorRevenueData.slice(0, 5).map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
@@ -507,7 +582,7 @@ export function CustomerMetrics() {
               <div className="mt-4">
                 <h4 className="text-sm font-medium mb-2">Top 3 Médicos</h4>
                 <div className="space-y-2">
-                  {doctorRevenueData.slice(0, 3).map((doctor, index) => (
+                  {filteredDoctorRevenueData.slice(0, 3).map((doctor, index) => (
                     <div key={index} className="flex justify-between items-center text-sm">
                       <span>{doctor.name}</span>
                       <div className="flex space-x-4">
@@ -521,17 +596,17 @@ export function CustomerMetrics() {
             </CardContent>
           </Card>
           
-          {/* Card de Atendimentos por Médico */}
+          {/* Card de Agendamentos por Médico */}
           <Card className="col-span-1">
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Atendimentos por Médico</CardTitle>
-              <CardDescription>Consultas e procedimentos realizados</CardDescription>
+              <CardTitle className="text-base">Agendamentos por Médico</CardTitle>
+              <CardDescription>Consultas e procedimentos agendados</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
-                    data={doctorAppointmentsData.slice(0, 5)}
+                    data={filteredDoctorAppointmentsData.slice(0, 5)}
                     margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
@@ -541,36 +616,42 @@ export function CustomerMetrics() {
                     <Legend />
                     <Bar dataKey="consultations" name="Consultas" stackId="a" fill={APPOINTMENT_COLORS[0]} />
                     <Bar dataKey="procedures" name="Procedimentos" stackId="a" fill={APPOINTMENT_COLORS[1]} />
+                    <Bar dataKey="otherServices" name="Outros" stackId="a" fill="#FF8042" />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
               
               <div className="mt-4 grid grid-cols-2 gap-4">
                 <div>
-                  <h4 className="text-sm font-medium mb-2">Médicos com mais atendimentos</h4>
+                  <h4 className="text-sm font-medium mb-2">Médicos com mais agendamentos</h4>
                   <div className="space-y-2">
-                    {doctorAppointmentsData.slice(0, 3).map((doctor, index) => (
+                    {filteredDoctorAppointmentsData.slice(0, 3).map((doctor, index) => (
                       <div key={index} className="text-sm">
                         <div className="font-medium">{doctor.name}</div>
-                        <div className="text-muted-foreground">{doctor.total} atendimentos</div>
+                        <div className="text-muted-foreground">{doctor.total} agendamentos</div>
                       </div>
                     ))}
                   </div>
                 </div>
                 
                 <div>
-                  <h4 className="text-sm font-medium mb-2">Tipos de Atendimento</h4>
+                  <h4 className="text-sm font-medium mb-2">Status dos Agendamentos</h4>
                   <div className="space-y-2">
                     <div className="flex justify-between items-center">
-                      <span className="text-sm">Consultas</span>
+                      <span className="text-sm">Pendentes</span>
                       <span className="text-sm font-medium">
-                        {formatNumber(doctorAppointmentsData.reduce((sum, doc) => sum + doc.consultations, 0))}
+                        {formatNumber(filteredDoctorAppointmentsData.reduce((sum, doc) => sum + doc.pendingAppointments, 0))}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center"><span className="text-sm">Confirmados</span>
+                      <span className="text-sm font-medium">
+                        {formatNumber(filteredDoctorAppointmentsData.reduce((sum, doc) => sum + doc.confirmedAppointments, 0))}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm">Procedimentos</span>
+                      <span className="text-sm">Cancelados</span>
                       <span className="text-sm font-medium">
-                        {formatNumber(doctorAppointmentsData.reduce((sum, doc) => sum + doc.procedures, 0))}
+                        {formatNumber(filteredDoctorAppointmentsData.reduce((sum, doc) => sum + doc.canceledAppointments, 0))}
                       </span>
                     </div>
                   </div>
@@ -578,10 +659,76 @@ export function CustomerMetrics() {
               </div>
             </CardContent>
           </Card>
+
+{/* Novo Card: Detalhamento de Agendamentos por Médico */}
+<Card className="col-span-2">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Detalhamento de Agendamentos por Médico</CardTitle>
+              <CardDescription>Análise completa dos agendamentos por profissional</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left py-2 font-medium">Médico</th>
+                      <th className="text-center py-2 font-medium">Total</th>
+                      <th className="text-center py-2 font-medium">Consultas</th>
+                      <th className="text-center py-2 font-medium">Procedimentos</th>
+                      <th className="text-center py-2 font-medium">Outros</th>
+                      <th className="text-center py-2 font-medium">Pendentes</th>
+                      <th className="text-center py-2 font-medium">Confirmados</th>
+                      <th className="text-center py-2 font-medium">Cancelados</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredDoctorAppointmentsData.map((doctor, index) => (
+                      <tr key={index} className="border-b hover:bg-gray-50">
+                        <td className="py-2 font-medium">{doctor.name}</td>
+                        <td className="text-center py-2">{formatNumber(doctor.total)}</td>
+                        <td className="text-center py-2">{formatNumber(doctor.consultations)}</td>
+                        <td className="text-center py-2">{formatNumber(doctor.procedures)}</td>
+                        <td className="text-center py-2">{formatNumber(doctor.otherServices)}</td>
+                        <td className="text-center py-2">{formatNumber(doctor.pendingAppointments)}</td>
+                        <td className="text-center py-2">{formatNumber(doctor.confirmedAppointments)}</td>
+                        <td className="text-center py-2">{formatNumber(doctor.canceledAppointments)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="font-medium bg-gray-50">
+                      <td className="py-2">Total</td>
+                      <td className="text-center py-2">
+                        {formatNumber(filteredDoctorAppointmentsData.reduce((sum, doc) => sum + doc.total, 0))}
+                      </td>
+                      <td className="text-center py-2">
+                        {formatNumber(filteredDoctorAppointmentsData.reduce((sum, doc) => sum + doc.consultations, 0))}
+                      </td>
+                      <td className="text-center py-2">
+                        {formatNumber(filteredDoctorAppointmentsData.reduce((sum, doc) => sum + doc.procedures, 0))}
+                      </td>
+                      <td className="text-center py-2">
+                        {formatNumber(filteredDoctorAppointmentsData.reduce((sum, doc) => sum + doc.otherServices, 0))}
+                      </td>
+                      <td className="text-center py-2">
+                        {formatNumber(filteredDoctorAppointmentsData.reduce((sum, doc) => sum + doc.pendingAppointments, 0))}
+                      </td>
+                      <td className="text-center py-2">
+                        {formatNumber(filteredDoctorAppointmentsData.reduce((sum, doc) => sum + doc.confirmedAppointments, 0))}
+                      </td>
+                      <td className="text-center py-2">
+                        {formatNumber(filteredDoctorAppointmentsData.reduce((sum, doc) => sum + doc.canceledAppointments, 0))}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </TabsContent>
       
-      {/* Modal para detalhes (implementação básica) */}
+      {/* Modal para detalhes do médico */}
       {showModal && selectedDoctorData && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg max-w-md w-full">
@@ -590,6 +737,39 @@ export function CustomerMetrics() {
               <p><span className="font-medium">Nome:</span> {selectedDoctorData.name}</p>
               <p><span className="font-medium">Receita Total:</span> {formatCurrency(selectedDoctorData.revenue)}</p>
               <p><span className="font-medium">Pacientes Atendidos:</span> {selectedDoctorData.patients}</p>
+              
+              {/* Adicionar informações sobre agendamentos se disponíveis */}
+              {doctorAppointmentsData.find(d => d.name === selectedDoctorData.name) && (
+                <>
+                  <p className="mt-4 font-medium">Agendamentos:</p>
+                  <div className="grid grid-cols-2 gap-2 mt-2">
+                    <div className="bg-gray-100 p-2 rounded">
+                      <p className="text-sm text-gray-500">Total</p>
+                      <p className="font-medium">
+                        {formatNumber(doctorAppointmentsData.find(d => d.name === selectedDoctorData.name).total)}
+                      </p>
+                    </div>
+                    <div className="bg-gray-100 p-2 rounded">
+                      <p className="text-sm text-gray-500">Consultas</p>
+                      <p className="font-medium">
+                        {formatNumber(doctorAppointmentsData.find(d => d.name === selectedDoctorData.name).consultations)}
+                      </p>
+                    </div>
+                    <div className="bg-gray-100 p-2 rounded">
+                      <p className="text-sm text-gray-500">Procedimentos</p>
+                      <p className="font-medium">
+                        {formatNumber(doctorAppointmentsData.find(d => d.name === selectedDoctorData.name).procedures)}
+                      </p>
+                    </div>
+                    <div className="bg-gray-100 p-2 rounded">
+                      <p className="text-sm text-gray-500">Confirmados</p>
+                      <p className="font-medium">
+                        {formatNumber(doctorAppointmentsData.find(d => d.name === selectedDoctorData.name).confirmedAppointments)}
+                      </p>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
             <div className="mt-6 flex justify-end">
               <Button onClick={() => setShowModal(false)}>Fechar</Button>

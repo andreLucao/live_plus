@@ -1,3 +1,4 @@
+// app/api/[tenant]/users/route.js
 import { NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import { getUserModel } from '@/lib/models/User';

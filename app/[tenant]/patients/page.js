@@ -12,6 +12,14 @@ import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import Sidebar from "@/components/Sidebar";
 import Link from "next/link";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 
 
@@ -29,6 +37,12 @@ export default function PatientsPage() {
   const { tenant } = useParams();
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState(null);
+  
+  // Estados para o modal de novo paciente
+  const [showNewPatientDialog, setShowNewPatientDialog] = useState(false);
+  const [newPatientEmail, setNewPatientEmail] = useState("");
+  const [isCreatingPatient, setIsCreatingPatient] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   // Effect for loading user and patients
   useEffect(() => {
@@ -83,6 +97,61 @@ export default function PatientsPage() {
       setError("Falha ao carregar os pacientes. Por favor, tente novamente mais tarde.");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Function to create a new patient using the existing users API
+  const createNewPatient = async () => {
+    if (!newPatientEmail) {
+      setError("O email do paciente é obrigatório");
+      return;
+    }
+    
+    setIsCreatingPatient(true);
+    setError("");
+    
+    try {
+      // Usando o endpoint existente de usuários
+      const tempId = "new"; // ID especial para indicar criação
+      
+      const response = await fetch(`/api/${tenant}/users/${tempId}`, {
+        method: 'PUT', // Usando PUT conforme a API existente
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: newPatientEmail,
+          role: 'user', // Garantindo que o papel será 'user'
+          status: 'Active',
+          tenantPath: tenant // Enviando o tenant atual como tenantPath
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Falha ao criar paciente');
+      }
+      
+      const data = await response.json();
+      
+      // Feedback de sucesso
+      setSuccessMessage("Paciente criado com sucesso!");
+      setNewPatientEmail("");
+      
+      // Atualiza a lista de pacientes
+      fetchPatients();
+      
+      // Fecha o modal após 2 segundos
+      setTimeout(() => {
+        setShowNewPatientDialog(false);
+        setSuccessMessage("");
+      }, 2000);
+      
+    } catch (err) {
+      console.error('Error creating patient:', err);
+      setError(err.message || "Falha ao criar paciente. Verifique se o email é válido e não existe no sistema.");
+    } finally {
+      setIsCreatingPatient(false);
     }
   };
 
@@ -154,7 +223,13 @@ export default function PatientsPage() {
                 </span>
               </div>
 
-              
+              {/* Botão Novo Paciente */}
+              <Button 
+                onClick={() => setShowNewPatientDialog(true)}
+                className="bg-[#009EE3] hover:bg-[#0289C4]"
+              >
+                <Plus className="mr-1 h-4 w-4" /> Novo Paciente
+              </Button>
             </div>
 
             {/* Error message */}
@@ -162,6 +237,13 @@ export default function PatientsPage() {
               <Alert variant="destructive" className="mb-4">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            {/* Success message (mostra fora do modal também) */}
+            {successMessage && (
+              <Alert className="mb-4 bg-green-50 border-green-200 text-green-800 dark:bg-green-900 dark:border-green-800 dark:text-green-100">
+                <AlertDescription>{successMessage}</AlertDescription>
               </Alert>
             )}
 
@@ -259,6 +341,72 @@ export default function PatientsPage() {
           </div>
         </div>
       </main>
+
+      {/* Modal para criar novo paciente */}
+      <Dialog open={showNewPatientDialog} onOpenChange={setShowNewPatientDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Adicionar Novo Paciente</DialogTitle>
+            <DialogDescription>
+              Insira o email do paciente para criar uma nova conta.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {/* Campo de email */}
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-right">
+                Email
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="email@exemplo.com"
+                value={newPatientEmail}
+                onChange={(e) => setNewPatientEmail(e.target.value)}
+                disabled={isCreatingPatient}
+              />
+            </div>
+            
+            {/* Mensagem de erro */}
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            
+            {/* Mensagem de sucesso */}
+            {successMessage && (
+              <Alert className="bg-green-50 border-green-200 text-green-800 dark:bg-green-900 dark:border-green-800 dark:text-green-100">
+                <AlertDescription>{successMessage}</AlertDescription>
+              </Alert>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowNewPatientDialog(false)}
+              disabled={isCreatingPatient}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              onClick={createNewPatient}
+              disabled={isCreatingPatient || !newPatientEmail}
+              className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800"
+            >
+              {isCreatingPatient ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Criando...
+                </>
+              ) : "Criar Paciente"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
