@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Plus, Search, Calendar, Clock, AlertCircle, Users, Mail, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,11 +27,25 @@ export default function PatientsPage() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const { tenant } = useParams();
+  const router = useRouter();
+  const [currentUser, setCurrentUser] = useState(null);
 
-  // Effect for loading patients
+  // Effect for loading user and patients
   useEffect(() => {
-    fetchPatients();
+    fetchCurrentUser();
   }, []);
+
+  useEffect(() => {
+    if (currentUser) {
+      // Redirect users with role 'user' to the appointments page
+      if (currentUser.role === 'user') {
+        router.push(`/${tenant}/appointments`);
+        return;
+      }
+      
+      fetchPatients();
+    }
+  }, [currentUser, router, tenant]);
 
   // Effect for dark mode
   useEffect(() => {
@@ -41,6 +55,20 @@ export default function PatientsPage() {
       document.documentElement.classList.remove("dark");
     }
   }, [darkMode]);
+
+  // Function to fetch current user
+  const fetchCurrentUser = async () => {
+    try {
+      const response = await fetch('/api/auth/user');
+      if (!response.ok) throw new Error('Failed to fetch user');
+      const userData = await response.json();
+      console.log('Current user:', userData);
+      setCurrentUser(userData);
+    } catch (error) {
+      console.error('Error fetching current user:', error);
+      setError("Falha ao carregar informações do usuário");
+    }
+  };
 
   // Function to fetch patients
   const fetchPatients = async () => {
@@ -85,6 +113,23 @@ export default function PatientsPage() {
         <main className="flex-1 overflow-y-auto">
           <div className="flex justify-center items-center h-full">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // If user role is 'user', don't render the page (they should be redirected)
+  if (currentUser && currentUser.role === 'user') {
+    return (
+      <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
+        <Sidebar />
+        <main className="flex-1 overflow-y-auto">
+          <div className="flex justify-center items-center h-full">
+            <div className="text-center">
+              <h2 className="text-xl font-semibold mb-2">Acesso Restrito</h2>
+              <p className="text-gray-600">Você não tem permissão para acessar esta página.</p>
+            </div>
           </div>
         </main>
       </div>

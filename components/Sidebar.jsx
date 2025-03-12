@@ -35,9 +35,15 @@ const createNavigationItems = (tenant, userRole) => {
     subItems: [
       { icon: <Calendar size={20} />, label: "Agendamentos", path: `/${tenant}/appointments` },
       { icon: <Stethoscope size={20} />, label: "Gestão de Procedimentos", path: `/${tenant}/procedures` },
-      { icon: <BookUser size={20} />, label: "Pacientes", path: `/${tenant}/patients` }
     ]
   };
+
+  // Add Patients page only for doctor, admin, and owner roles
+  if (userRole !== 'user') {
+    medicalItems.subItems.push(
+      { icon: <BookUser size={20} />, label: "Pacientes", path: `/${tenant}/patients` }
+    );
+  }
 
   // Items only for admin and owner
   const financialItems = {

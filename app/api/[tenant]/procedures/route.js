@@ -16,10 +16,24 @@ export async function GET(request, {params}) {
       );
     }
 
+    // Get query parameters
+    const { searchParams } = new URL(request.url);
+    const patient = searchParams.get('patient');
+    
+    // Build query object
+    const query = { tenantPath };
+    
+    // Add patient filter if provided
+    if (patient) {
+      // Use regex to make it case insensitive and partial match
+      query.patient = { $regex: patient, $options: 'i' };
+    }
+
     const Procedure = getProcedureModel(connection);
-    const procedures = await Procedure.find({ tenantPath }).sort({ date: -1 });
+    const procedures = await Procedure.find(query).sort({ date: -1 });
     return NextResponse.json(procedures);
   } catch (error) {
+    console.error('Error fetching procedures:', error);
     return NextResponse.json(
       { error: 'Failed to fetch procedures' }, 
       { status: 500 }

@@ -17,9 +17,23 @@ export async function GET(request, {params}) {
       );
     }
 
-    const appointments = await Appointment.find({ tenantPath }).sort({ date: -1 });
+    // Get query parameters
+    const { searchParams } = new URL(request.url);
+    const patient = searchParams.get('patient');
+    
+    // Build query object
+    const query = { tenantPath };
+    
+    // Add patient filter if provided
+    if (patient) {
+      // Use regex to make it case insensitive and partial match
+      query.patient = { $regex: patient, $options: 'i' };
+    }
+
+    const appointments = await Appointment.find(query).sort({ date: -1 });
     return NextResponse.json(appointments);
   } catch (error) {
+    console.error('Error fetching appointments:', error);
     return NextResponse.json(
       { error: 'Failed to fetch appointments' },
       { status: 500 }

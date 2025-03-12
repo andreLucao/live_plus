@@ -45,6 +45,7 @@ export default function ProcedureManager() {
   const [selectedUser, setSelectedUser] = useState(null)
   const [isUserModalOpen, setIsUserModalOpen] = useState(false)
   const [doctors, setDoctors] = useState([])
+  const [currentUser, setCurrentUser] = useState(null)
   const { tenant }= useParams()
 
   // Category colors configuration
@@ -116,9 +117,15 @@ export default function ProcedureManager() {
   ]
 
   useEffect(() => {
-    fetchProcedures()
-    fetchDoctors()
+    fetchCurrentUser()
   }, [])
+
+  useEffect(() => {
+    if (currentUser) {
+      fetchProcedures()
+      fetchDoctors()
+    }
+  }, [currentUser])
 
   useEffect(() => {
     if (darkMode) {
@@ -128,11 +135,43 @@ export default function ProcedureManager() {
     }
   }, [darkMode])
 
+  // Fetch current user information
+  const fetchCurrentUser = async () => {
+    try {
+      const response = await fetch('/api/auth/user')
+      if (!response.ok) throw new Error('Failed to fetch user')
+      const userData = await response.json()
+      console.log('Current user:', userData)
+      setCurrentUser(userData)
+    } catch (error) {
+      console.error('Error fetching current user:', error)
+      setError("Falha ao carregar informações do usuário")
+    }
+  }
+
   const fetchProcedures = async () => {
     try {
-      const response = await fetch(`/api/${tenant}/procedures`)
+      // Base URL for fetching procedures
+      let url = `/api/${tenant}/procedures`
+      
+      // If user role is 'user', only fetch their procedures
+      if (currentUser && currentUser.role === 'user') {
+        // Assuming the patient field contains the user's email for identification
+        url += `?patient=${encodeURIComponent(currentUser.email)}`
+      }
+      
+      const response = await fetch(url)
       if (!response.ok) throw new Error('Failed to fetch procedures')
-      const data = await response.json()
+      let data = await response.json()
+      
+      // Additional client-side filtering for user role if needed
+      if (currentUser && currentUser.role === 'user') {
+        data = data.filter(procedure => 
+          procedure.patient === currentUser.email || 
+          procedure.patient.includes(currentUser.email)
+        )
+      }
+      
       setProcedures(data)
       setError("")
     } catch (error) {
@@ -327,102 +366,108 @@ export default function ProcedureManager() {
                   Gestão de Procedimentos Médicos
                 </h1>
                 <span className="text-gray-600 dark:text-gray-400 mt-1">
-                  Total de Procedimentos: {filteredProcedures.length}
+                  {currentUser && currentUser.role === 'user' 
+                    ? "Visualizando apenas seus procedimentos" 
+                    : `Total de Procedimentos: ${filteredProcedures.length}`
+                  }
                 </span>
               </div>
 
               <div className="flex items-center gap-4">
-                <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-                  <DialogTrigger asChild>
-                    <Button className="bg-[#009EE3] hover:bg-[#0080B7] text-white">
-                      <Plus className="mr-2 h-4 w-4" /> Novo Procedimento
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[425px]">
-                    <DialogHeader>
-                      <DialogTitle>Adicionar Novo Procedimento</DialogTitle>
-                    </DialogHeader>
-                    <form onSubmit={addProcedure} className="space-y-4">
-                      <div className="space-y-4">
-                        <div>
-                          <Label htmlFor="procedureName">Nome do Procedimento</Label>
-                          <Input
-                            id="procedureName"
-                            value={newProcedure.name}
-                            onChange={(e) => setNewProcedure({ ...newProcedure, name: e.target.value })}
-                            placeholder="Digite o nome do procedimento"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="procedureCategory">Categoria</Label>
-                          <Select 
-                            value={newProcedure.category} 
-                            onValueChange={(value) => setNewProcedure({ ...newProcedure, category: value })}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione a categoria" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {categories.map((category) => (
-                                <SelectItem key={category} value={category}>
-                                  {category}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label htmlFor="procedureDate">Data</Label>
-                          <Input
-                            id="procedureDate"
-                            type="date"
-                            value={newProcedure.date}
-                            onChange={(e) => setNewProcedure({ ...newProcedure, date: e.target.value })}
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="procedureDoctor">Médico Responsável</Label>
-                          <Select
-                            value={newProcedure.doctor}
-                            onValueChange={(value) => setNewProcedure({ ...newProcedure, doctor: value })}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione o médico" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {doctors.length > 0 ? (
-                                doctors.map((doctor) => (
-                                  <SelectItem key={doctor._id} value={doctor._id}>
-                                    {doctor.name || (doctor.email ? 
-                                      doctor.email.split(/[@.]/)[0].charAt(0).toUpperCase() + 
-                                      doctor.email.split(/[@.]/)[0].slice(1) : 
-                                      doctor._id)}
-                                  </SelectItem>
-                                ))
-                              ) : (
-                                <SelectItem value="" disabled>
-                                  Nenhum médico encontrado
-                                </SelectItem>
-                              )}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label htmlFor="procedurePatient">Paciente</Label>
-                          <Input
-                            id="procedurePatient"
-                            value={newProcedure.patient}
-                            onChange={(e) => setNewProcedure({ ...newProcedure, patient: e.target.value })}
-                            placeholder="Nome do paciente"
-                          />
-                        </div>
-                      </div>
-                      <Button type="submit" className="w-full bg-[#009EE3] hover:bg-[#0080B7]">
-                        Adicionar Procedimento
+                {/* Only show New Procedure button for admin, owner, or doctor roles */}
+                {(!currentUser || currentUser.role !== 'user') && (
+                  <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+                    <DialogTrigger asChild>
+                      <Button className="bg-[#009EE3] hover:bg-[#0080B7] text-white">
+                        <Plus className="mr-2 h-4 w-4" /> Novo Procedimento
                       </Button>
-                    </form>
-                  </DialogContent>
-                </Dialog>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[425px]">
+                      <DialogHeader>
+                        <DialogTitle>Adicionar Novo Procedimento</DialogTitle>
+                      </DialogHeader>
+                      <form onSubmit={addProcedure} className="space-y-4">
+                        <div className="space-y-4">
+                          <div>
+                            <Label htmlFor="procedureName">Nome do Procedimento</Label>
+                            <Input
+                              id="procedureName"
+                              value={newProcedure.name}
+                              onChange={(e) => setNewProcedure({ ...newProcedure, name: e.target.value })}
+                              placeholder="Digite o nome do procedimento"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="procedureCategory">Categoria</Label>
+                            <Select 
+                              value={newProcedure.category} 
+                              onValueChange={(value) => setNewProcedure({ ...newProcedure, category: value })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione a categoria" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {categories.map((category) => (
+                                  <SelectItem key={category} value={category}>
+                                    {category}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label htmlFor="procedureDate">Data</Label>
+                            <Input
+                              id="procedureDate"
+                              type="date"
+                              value={newProcedure.date}
+                              onChange={(e) => setNewProcedure({ ...newProcedure, date: e.target.value })}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="procedureDoctor">Médico Responsável</Label>
+                            <Select
+                              value={newProcedure.doctor}
+                              onValueChange={(value) => setNewProcedure({ ...newProcedure, doctor: value })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione o médico" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {doctors.length > 0 ? (
+                                  doctors.map((doctor) => (
+                                    <SelectItem key={doctor._id} value={doctor._id}>
+                                      {doctor.name || (doctor.email ? 
+                                        doctor.email.split(/[@.]/)[0].charAt(0).toUpperCase() + 
+                                        doctor.email.split(/[@.]/)[0].slice(1) : 
+                                        doctor._id)}
+                                    </SelectItem>
+                                  ))
+                                ) : (
+                                  <SelectItem value="" disabled>
+                                    Nenhum médico encontrado
+                                  </SelectItem>
+                                )}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label htmlFor="procedurePatient">Paciente</Label>
+                            <Input
+                              id="procedurePatient"
+                              value={newProcedure.patient}
+                              onChange={(e) => setNewProcedure({ ...newProcedure, patient: e.target.value })}
+                              placeholder="Nome do paciente"
+                            />
+                          </div>
+                        </div>
+                        <Button type="submit" className="w-full bg-[#009EE3] hover:bg-[#0080B7]">
+                          Adicionar Procedimento
+                        </Button>
+                      </form>
+                    </DialogContent>
+                  </Dialog>
+                )}
               </div>
             </div>
 
@@ -579,37 +624,44 @@ export default function ProcedureManager() {
                                 <Clock className="h-3 w-3 mr-1" />
                                 {getTimeAgo(procedure.date)}
                               </Badge>
-                              <Badge 
-                                variant="secondary" 
-                                className="bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-100 cursor-pointer"
-                                onClick={() => {
-                                  setSelectedUser({ name: getDoctorName(procedure.doctor), id: procedure.doctor, type: 'doctor' })
-                                  setIsUserModalOpen(true)
-                                }}
-                              >
-                                <User className="h-3 w-3 mr-1" />
-                                {getDoctorName(procedure.doctor)}
-                              </Badge>
-                              <Badge 
-                                variant="secondary" 
-                                className="bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-100 cursor-pointer"
-                                onClick={() => {
-                                  setSelectedUser({ name: procedure.patient, id: procedure.patient, type: 'patient' })
-                                  setIsUserModalOpen(true)
-                                }}
-                              >
-                                <UserMinus className="h-3 w-3 mr-1" />
-                                {procedure.patient}
-                              </Badge>
+                              <div className="flex items-center gap-2">
+                                <Badge 
+                                  variant="secondary" 
+                                  className="bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-100 cursor-pointer"
+                                  onClick={() => {
+                                    setSelectedUser({ name: getDoctorName(procedure.doctor), id: procedure.doctor, type: 'doctor' })
+                                    setIsUserModalOpen(true)
+                                  }}
+                                >
+                                  <User className="h-3 w-3 mr-1" />
+                                  {getDoctorName(procedure.doctor)}
+                                </Badge>
+                                <Badge 
+                                  variant="secondary" 
+                                  className="bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-100 cursor-pointer"
+                                  onClick={() => {
+                                    setSelectedUser({ name: procedure.patient, id: procedure.patient, type: 'patient' })
+                                    setIsUserModalOpen(true)
+                                  }}
+                                >
+                                  <UserMinus className="h-3 w-3 mr-1" />
+                                  {procedure.patient}
+                                </Badge>
+                              </div>
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <Button variant="ghost" size="icon" onClick={() => editProcedure(procedure._id)}>
-                              <Edit2 className="h-4 w-4 text-[#009EE3]" />
-                            </Button>
-                            <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(procedure)}>
-                              <Trash2 className="h-4 w-4 text-red-500" />
-                            </Button>
+                            {/* Only show edit and delete buttons for admin, owner, or doctor roles */}
+                            {(!currentUser || currentUser.role !== 'user') && (
+                              <>
+                                <Button variant="ghost" size="icon" onClick={() => editProcedure(procedure._id)}>
+                                  <Edit2 className="h-4 w-4 text-[#009EE3]" />
+                                </Button>
+                                <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(procedure)}>
+                                  <Trash2 className="h-4 w-4 text-red-500" />
+                                </Button>
+                              </>
+                            )}
                           </div>
                         </>
                       )}

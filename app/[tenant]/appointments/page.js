@@ -52,6 +52,7 @@ export default function AppointmentManager() {
   const [currentMeeting, setCurrentMeeting] = useState(null)
   const [isUpdatingAll, setIsUpdatingAll] = useState(false)
   const [doctors, setDoctors] = useState([])
+  const [currentUser, setCurrentUser] = useState(null)
 
   const services = [
     "Consulta Médica",
@@ -64,16 +65,63 @@ export default function AppointmentManager() {
   ]
 
   useEffect(() => {
-    fetchAppointments()
-    fetchDoctors()
+    fetchCurrentUser()
   }, [])
+
+  useEffect(() => {
+    if (currentUser) {
+      // If user role is 'user', prefill the patient field with their email
+      if (currentUser.role === 'user') {
+        setNewAppointment(prev => ({
+          ...prev,
+          patient: currentUser.email
+        }))
+      }
+      
+      fetchAppointments()
+      fetchDoctors()
+    }
+  }, [currentUser])
+
+  // Fetch current user information
+  const fetchCurrentUser = async () => {
+    try {
+      const response = await fetch('/api/auth/user')
+      if (!response.ok) throw new Error('Failed to fetch user')
+      const userData = await response.json()
+      console.log('Current user:', userData)
+      setCurrentUser(userData)
+    } catch (error) {
+      console.error('Error fetching current user:', error)
+      setError("Falha ao carregar informações do usuário")
+    }
+  }
 
   const fetchAppointments = async () => {
     try {
       setIsLoading(true)
-      const response = await fetch(`/api/${tenant}/appointments`)
+      
+      // Base URL for fetching appointments
+      let url = `/api/${tenant}/appointments`
+      
+      // If user role is 'user', only fetch their appointments
+      if (currentUser && currentUser.role === 'user') {
+        // Assuming the patient field contains the user's email for identification
+        url += `?patient=${encodeURIComponent(currentUser.email)}`
+      }
+      
+      const response = await fetch(url)
       if (!response.ok) throw new Error('Failed to fetch appointments')
-      const data = await response.json()
+      let data = await response.json()
+      
+      // Additional client-side filtering for user role if needed
+      if (currentUser && currentUser.role === 'user') {
+        data = data.filter(appointment => 
+          appointment.patient === currentUser.email || 
+          appointment.patient.includes(currentUser.email)
+        )
+      }
+      
       console.log('Agendamentos carregados:', data);
       setAppointments(data)
       setError("")
@@ -102,10 +150,16 @@ export default function AppointmentManager() {
   const addAppointment = async (e) => {
     e.preventDefault()
     try {
+      // For users with role 'user', ensure the patient field is set to their email
+      let appointmentData = { ...newAppointment }
+      if (currentUser && currentUser.role === 'user') {
+        appointmentData.patient = currentUser.email
+      }
+      
       const response = await fetch(`/api/${tenant}/appointments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newAppointment),
+        body: JSON.stringify(appointmentData),
       })
 
       if (!response.ok) throw new Error('Failed to add appointment')
@@ -120,7 +174,7 @@ export default function AppointmentManager() {
       }
       
       await fetchAppointments()
-      setNewAppointment({ status: "Pending", date: "", professional: "", patient: "", service: "" })
+      setNewAppointment({ status: "Pending", date: "", professional: "", patient: currentUser?.role === 'user' ? currentUser.email : "", service: "" })
       setIsModalOpen(false)
     } catch (error) {
       console.error("Erro ao adicionar agendamento:", error)
@@ -337,7 +391,14 @@ export default function AppointmentManager() {
           <div className="max-w-7xl mx-auto">
             {/* Header */}
             <div className="flex justify-between items-center mb-8">
-              <h1 className="text-2xl font-bold text-gray-900">Gestão de Agendamentos</h1>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Gestão de Agendamentos</h1>
+                {currentUser && currentUser.role === 'user' && (
+                  <p className="text-sm text-gray-600 mt-1">
+                    Visualizando apenas seus agendamentos
+                  </p>
+                )}
+              </div>
               <div className="flex gap-4">
                 <div className="flex rounded-md shadow-sm" role="group">
                   <Button
@@ -367,6 +428,7 @@ export default function AppointmentManager() {
                     Calendário
                   </Button>
                 </div>
+                {/* Allow all users to create appointments */}
                 <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
                   <DialogTrigger asChild>
                     <Button className="bg-[#009EE3] hover:bg-[#0080B7]">
@@ -386,6 +448,9 @@ export default function AppointmentManager() {
                           value={newAppointment.patient}
                           onChange={(e) => setNewAppointment({ ...newAppointment, patient: e.target.value })}
                           placeholder="Nome do paciente"
+                          // For user role, prefill and disable the patient field with their own email
+                          disabled={currentUser && currentUser.role === 'user'}
+                          defaultValue={currentUser && currentUser.role === 'user' ? currentUser.email : ''}
                         />
                       </div>
                       <div>
@@ -519,6 +584,7 @@ export default function AppointmentManager() {
                       onStartMeeting={openJitsiMeeting}
                       getDoctorName={getDoctorName}
                       doctors={doctors}
+                      currentUser={currentUser}
                     />
                   </TabsContent>
                   {["Pending", "Confirmed", "Canceled"].map((status) => (
@@ -530,6 +596,7 @@ export default function AppointmentManager() {
                         onStartMeeting={openJitsiMeeting}
                         getDoctorName={getDoctorName}
                         doctors={doctors}
+                        currentUser={currentUser}
                       />
                     </TabsContent>
                   ))}
@@ -626,7 +693,7 @@ export default function AppointmentManager() {
 }
 
 // Componente de lista de agendamentos
-function AppointmentsList({ appointments, onStatusChange, onDelete, onStartMeeting, getDoctorName, doctors }) {
+function AppointmentsList({ appointments, onStatusChange, onDelete, onStartMeeting, getDoctorName, doctors, currentUser }) {
   // Fallback implementation of getDoctorName in case it's not provided
   const getDoctor = getDoctorName || ((doctorId) => {
     const doctor = doctors.find(d => d._id === doctorId)
@@ -717,26 +784,32 @@ function AppointmentsList({ appointments, onStatusChange, onDelete, onStartMeeti
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
-                  <Select
-                    value={appointment.status}
-                    onValueChange={(value) => onStatusChange(appointment._id, value)}
-                  >
-                    <SelectTrigger className="w-[140px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Pending">Pendente</SelectItem>
-                      <SelectItem value="Confirmed">Confirmado</SelectItem>
-                      <SelectItem value="Canceled">Cancelado</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => onDelete(appointment)}
-                  >
-                    <Trash2 className="h-4 w-4 text-red-500" />
-                  </Button>
+                  
+                  {/* Only show status change and delete buttons for non-user roles */}
+                  {(!currentUser || currentUser.role !== 'user') && (
+                    <>
+                      <Select
+                        value={appointment.status}
+                        onValueChange={(value) => onStatusChange(appointment._id, value)}
+                      >
+                        <SelectTrigger className="w-[140px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Pending">Pendente</SelectItem>
+                          <SelectItem value="Confirmed">Confirmado</SelectItem>
+                          <SelectItem value="Canceled">Cancelado</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onDelete(appointment)}
+                      >
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
             ))
