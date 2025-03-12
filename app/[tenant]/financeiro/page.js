@@ -303,8 +303,8 @@ function RoleProtectedDashboard() {
         const data = await response.json()
         setUserRole(data.role)
 
-        // Redirect if not owner
-        if (data.role !== "owner") {
+        // Redirect if not owner or admin
+        if (data.role !== "owner" && data.role !== "admin") {
           router.push(`/${tenant}/unauthorized`)
         }
       } catch (error) {
@@ -346,8 +346,8 @@ function RoleProtectedDashboard() {
     )
   }
 
-  // If role is not owner, show unauthorized message (fallback in case redirect fails)
-  if (userRole !== "owner") {
+  // If role is not owner or admin, show unauthorized message (fallback in case redirect fails)
+  if (userRole !== "owner" && userRole !== "admin") {
     return (
       <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
         <Sidebar />
@@ -356,7 +356,7 @@ function RoleProtectedDashboard() {
             <ShieldAlert className="h-4 w-4" />
             <AlertTitle>Acesso Restrito</AlertTitle>
             <AlertDescription>
-              Você não tem permissão para acessar esta página. Esta seção é restrita para usuários com permissão de proprietário.
+              Você não tem permissão para acessar esta página. Esta seção é restrita para usuários com permissão de proprietário ou administrador.
             </AlertDescription>
           </Alert>
         </main>
