@@ -21,6 +21,9 @@ export default function PaginaPaciente() {
   const [error, setError] = useState(null);
   const [editMode, setEditMode] = useState(false);
   const [formData, setFormData] = useState({
+    email: '',
+    cellphone: '',
+    cpf: '',
     clinicalHistory: '',
     surgicalHistory: '',
     familyHistory: '',
@@ -43,6 +46,54 @@ export default function PaginaPaciente() {
   const [documentDialogOpen, setDocumentDialogOpen] = useState(false);
   const [deletingDocumentId, setDeletingDocumentId] = useState(null);
 
+  // Format cellphone number as (XX) XXXXX-XXXX
+  const formatCellphone = (value) => {
+    if (!value) return "";
+    
+    // Remove all non-digit characters
+    const digits = value.replace(/\D/g, "");
+    
+    // Format based on the number of digits
+    if (digits.length <= 2) {
+      return digits.length ? `(${digits}` : "";
+    } else if (digits.length <= 7) {
+      return `(${digits.substring(0, 2)}) ${digits.substring(2)}`;
+    } else {
+      return `(${digits.substring(0, 2)}) ${digits.substring(2, 7)}-${digits.substring(7, 11)}`;
+    }
+  };
+
+  // Format CPF as XXX.XXX.XXX-XX
+  const formatCPF = (value) => {
+    if (!value) return "";
+    
+    // Remove all non-digit characters
+    const digits = value.replace(/\D/g, "");
+    
+    // Format based on the number of digits
+    if (digits.length <= 3) {
+      return digits;
+    } else if (digits.length <= 6) {
+      return `${digits.substring(0, 3)}.${digits.substring(3)}`;
+    } else if (digits.length <= 9) {
+      return `${digits.substring(0, 3)}.${digits.substring(3, 6)}.${digits.substring(6)}`;
+    } else {
+      return `${digits.substring(0, 3)}.${digits.substring(3, 6)}.${digits.substring(6, 9)}-${digits.substring(9, 11)}`;
+    }
+  };
+
+  // Handle cellphone input change with formatting
+  const handleCellphoneChange = (e) => {
+    const formattedValue = formatCellphone(e.target.value);
+    setFormData(prev => ({ ...prev, cellphone: formattedValue }));
+  };
+
+  // Handle CPF input change with formatting
+  const handleCPFChange = (e) => {
+    const formattedValue = formatCPF(e.target.value);
+    setFormData(prev => ({ ...prev, cpf: formattedValue }));
+  };
+
   useEffect(() => {
     if (tenant && id) {
       fetchPatientDetails();
@@ -51,20 +102,23 @@ export default function PaginaPaciente() {
   }, [tenant, id]);
 
   useEffect(() => {
-    if (patient?.medicalDetails) {
+    if (patient) {
       setFormData({
-        clinicalHistory: patient.medicalDetails.clinicalHistory || '',
-        surgicalHistory: patient.medicalDetails.surgicalHistory || '',
-        familyHistory: patient.medicalDetails.familyHistory || '',
-        habits: patient.medicalDetails.habits || '',
-        allergies: patient.medicalDetails.allergies || '',
-        medications: patient.medicalDetails.medications || '',
+        email: patient.email || '',
+        cellphone: patient.cellphone || '',
+        cpf: patient.cpf || '',
+        clinicalHistory: patient.medicalDetails?.clinicalHistory || '',
+        surgicalHistory: patient.medicalDetails?.surgicalHistory || '',
+        familyHistory: patient.medicalDetails?.familyHistory || '',
+        habits: patient.medicalDetails?.habits || '',
+        allergies: patient.medicalDetails?.allergies || '',
+        medications: patient.medicalDetails?.medications || '',
         lastDiagnosis: {
-          date: patient.medicalDetails.lastDiagnosis?.date 
+          date: patient.medicalDetails?.lastDiagnosis?.date 
             ? new Date(patient.medicalDetails.lastDiagnosis.date).toISOString().split('T')[0] 
             : new Date().toISOString().split('T')[0],
-          diagnosis: patient.medicalDetails.lastDiagnosis?.diagnosis || '',
-          notes: patient.medicalDetails.lastDiagnosis?.notes || ''
+          diagnosis: patient.medicalDetails?.lastDiagnosis?.diagnosis || '',
+          notes: patient.medicalDetails?.lastDiagnosis?.notes || ''
         }
       });
     }
@@ -130,12 +184,43 @@ export default function PaginaPaciente() {
   const handleSave = async () => {
     try {
       setSaving(true);
+      
+      // Validate cellphone format if provided
+      if (formData.cellphone && !formData.cellphone.match(/^\(\d{2}\) \d{5}-\d{4}$/)) {
+        toast.error("Formato de celular inválido. Use (XX) XXXXX-XXXX");
+        setSaving(false);
+        return;
+      }
+      
+      // Validate CPF format if provided
+      if (formData.cpf && !formData.cpf.match(/^\d{3}\.\d{3}\.\d{3}-\d{2}$/)) {
+        toast.error("Formato de CPF inválido. Use XXX.XXX.XXX-XX");
+        setSaving(false);
+        return;
+      }
+      
+      // Prepare data for API
+      const dataToSend = {
+        email: formData.email,
+        cellphone: formData.cellphone || undefined,
+        cpf: formData.cpf || undefined,
+        medicalDetails: {
+          clinicalHistory: formData.clinicalHistory,
+          surgicalHistory: formData.surgicalHistory,
+          familyHistory: formData.familyHistory,
+          habits: formData.habits,
+          allergies: formData.allergies,
+          medications: formData.medications,
+          lastDiagnosis: formData.lastDiagnosis
+        }
+      };
+      
       const response = await fetch(`/api/${tenant}/patients/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(dataToSend),
       });
       
       if (!response.ok) {
@@ -626,9 +711,49 @@ export default function PaginaPaciente() {
                     <div>
                       <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Detalhes do Paciente</h1>
                       <div className="text-gray-600 dark:text-gray-300">
-                        <p>Email: {patient?.email || 'N/A'}</p>
-                        <p>Criado: {patient?.createdAt ? new Date(patient.createdAt).toLocaleDateString() : 'N/A'}</p>
-                        <p>Último Login: {patient?.lastLoginAt ? new Date(patient.lastLoginAt).toLocaleDateString() : 'N/A'}</p>
+                        {editMode ? (
+                          <div className="space-y-2 mt-2">
+                            <div>
+                              <Label htmlFor="email">Email</Label>
+                              <Input
+                                id="email"
+                                value={formData.email}
+                                onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                                className="mt-1"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="cellphone">Celular</Label>
+                              <Input
+                                id="cellphone"
+                                value={formData.cellphone}
+                                onChange={handleCellphoneChange}
+                                placeholder="(00) 00000-0000"
+                                className="mt-1"
+                                maxLength={15}
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="cpf">CPF</Label>
+                              <Input
+                                id="cpf"
+                                value={formData.cpf}
+                                onChange={handleCPFChange}
+                                placeholder="000.000.000-00"
+                                className="mt-1"
+                                maxLength={14}
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <p>Email: {patient?.email || 'N/A'}</p>
+                            {patient?.cellphone && <p>Celular: {patient.cellphone}</p>}
+                            {patient?.cpf && <p>CPF: {patient.cpf}</p>}
+                            <p>Criado: {patient?.createdAt ? new Date(patient.createdAt).toLocaleDateString() : 'N/A'}</p>
+                            <p>Último Login: {patient?.lastLoginAt ? new Date(patient.lastLoginAt).toLocaleDateString() : 'N/A'}</p>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>

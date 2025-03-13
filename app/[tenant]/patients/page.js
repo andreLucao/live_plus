@@ -102,6 +102,54 @@ export default function PatientsPage() {
     }
   };
 
+  // Format cellphone number as (XX) XXXXX-XXXX
+  const formatCellphone = (value) => {
+    if (!value) return "";
+    
+    // Remove all non-digit characters
+    const digits = value.replace(/\D/g, "");
+    
+    // Format based on the number of digits
+    if (digits.length <= 2) {
+      return digits.length ? `(${digits}` : "";
+    } else if (digits.length <= 7) {
+      return `(${digits.substring(0, 2)}) ${digits.substring(2)}`;
+    } else {
+      return `(${digits.substring(0, 2)}) ${digits.substring(2, 7)}-${digits.substring(7, 11)}`;
+    }
+  };
+
+  // Format CPF as XXX.XXX.XXX-XX
+  const formatCPF = (value) => {
+    if (!value) return "";
+    
+    // Remove all non-digit characters
+    const digits = value.replace(/\D/g, "");
+    
+    // Format based on the number of digits
+    if (digits.length <= 3) {
+      return digits;
+    } else if (digits.length <= 6) {
+      return `${digits.substring(0, 3)}.${digits.substring(3)}`;
+    } else if (digits.length <= 9) {
+      return `${digits.substring(0, 3)}.${digits.substring(3, 6)}.${digits.substring(6)}`;
+    } else {
+      return `${digits.substring(0, 3)}.${digits.substring(3, 6)}.${digits.substring(6, 9)}-${digits.substring(9, 11)}`;
+    }
+  };
+
+  // Handle cellphone input change with formatting
+  const handleCellphoneChange = (e) => {
+    const formattedValue = formatCellphone(e.target.value);
+    setNewPatientCellphone(formattedValue);
+  };
+
+  // Handle CPF input change with formatting
+  const handleCPFChange = (e) => {
+    const formattedValue = formatCPF(e.target.value);
+    setNewPatientCPF(formattedValue);
+  };
+
   // Function to create a new patient using the existing users API
   const createNewPatient = async () => {
     if (!newPatientEmail) {
@@ -109,10 +157,26 @@ export default function PatientsPage() {
       return;
     }
     
+    // Validate cellphone format if provided
+    if (newPatientCellphone && !newPatientCellphone.match(/^\(\d{2}\) \d{5}-\d{4}$/)) {
+      setError("Formato de celular inválido. Use (XX) XXXXX-XXXX");
+      return;
+    }
+    
+    // Validate CPF format if provided
+    if (newPatientCPF && !newPatientCPF.match(/^\d{3}\.\d{3}\.\d{3}-\d{2}$/)) {
+      setError("Formato de CPF inválido. Use XXX.XXX.XXX-XX");
+      return;
+    }
+    
     setIsCreatingPatient(true);
     setError("");
     
     try {
+      // Ensure cellphone and CPF are properly formatted
+      const cellphone = newPatientCellphone ? formatCellphone(newPatientCellphone) : undefined;
+      const cpf = newPatientCPF ? formatCPF(newPatientCPF) : undefined;
+      
       // Usando o endpoint existente de usuários
       const tempId = "new"; // ID especial para indicar criação
       
@@ -123,8 +187,8 @@ export default function PatientsPage() {
         },
         body: JSON.stringify({
           email: newPatientEmail,
-          cellphone: newPatientCellphone || undefined, // Only send if not empty
-          cpf: newPatientCPF || undefined, // Only send if not empty
+          cellphone: cellphone, // Use formatted value
+          cpf: cpf, // Use formatted value
           role: 'user', // Garantindo que o papel será 'user'
           status: 'Active',
           tenantPath: tenant // Enviando o tenant atual como tenantPath
@@ -175,11 +239,28 @@ export default function PatientsPage() {
     });
   };
 
+  // Helper function to normalize search terms by removing special characters
+  const normalizeSearchTerm = (term) => {
+    if (!term) return "";
+    return term.toLowerCase().replace(/[^\w\s]/g, "");
+  };
+
   // Filter patients based on search term and date range
-  const filteredPatients = filterByDateRange(patients).filter(patient => 
-    patient.email.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    (patient.cellphone && patient.cellphone.includes(searchTerm))
-  );
+  const filteredPatients = filterByDateRange(patients).filter(patient => {
+    const normalizedSearchTerm = normalizeSearchTerm(searchTerm);
+    
+    // If search term is empty, return all patients
+    if (!normalizedSearchTerm) return true;
+    
+    // Check if email contains search term
+    const emailMatch = patient.email.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    // Check if cellphone contains search term (after normalizing both)
+    const cellphoneMatch = patient.cellphone && 
+      normalizeSearchTerm(patient.cellphone).includes(normalizedSearchTerm);
+    
+    return emailMatch || cellphoneMatch;
+  });
 
   // Loading state
   if (isLoading) {
@@ -395,8 +476,9 @@ export default function PatientsPage() {
                 type="tel"
                 placeholder="(00) 00000-0000"
                 value={newPatientCellphone}
-                onChange={(e) => setNewPatientCellphone(e.target.value)}
+                onChange={handleCellphoneChange}
                 disabled={isCreatingPatient}
+                maxLength={15} // (XX) XXXXX-XXXX format has 15 characters
               />
             </div>
             
@@ -410,8 +492,9 @@ export default function PatientsPage() {
                 type="text"
                 placeholder="000.000.000-00"
                 value={newPatientCPF}
-                onChange={(e) => setNewPatientCPF(e.target.value)}
+                onChange={handleCPFChange}
                 disabled={isCreatingPatient}
+                maxLength={14} // XXX.XXX.XXX-XX format has 14 characters
               />
             </div>
             
