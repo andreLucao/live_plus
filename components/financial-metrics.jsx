@@ -51,110 +51,194 @@ export function FinancialMetrics() {
   const [metrics, setMetrics] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [detailedData, setDetailedData] = useState(null)
-  const [selectedPeriod, setSelectedPeriod] = useState('current')
+  const [selectedPeriod, setSelectedPeriod] = useState('all')
   const [availablePeriods, setAvailablePeriods] = useState([])
   const { tenant } = useParams()
 
   useEffect(() => {
-    const fetchPeriods = async () => {
-      try {
-        // Fetch available periods from API
-        const periodsResponse = await fetch(`/api/${tenant}/periods`)
-        
-        if (periodsResponse.ok) {
-          const periodsData = await periodsResponse.json()
-          setAvailablePeriods(periodsData)
-        } else {
-          // If API fails, create default periods (current month and previous 3 months)
-          const currentDate = new Date()
-          const periods = []
-          
-          for (let i = 0; i < 4; i++) {
-            const date = new Date(currentDate)
-            date.setMonth(currentDate.getMonth() - i)
-            
-            const month = date.toLocaleString('pt-BR', { month: 'long' })
-            const year = date.getFullYear()
-            const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-            
-            periods.push({
-              label: `${month} ${year}`,
-              value: i === 0 ? 'current' : value
-            })
-          }
-          
-          setAvailablePeriods(periods)
-        }
-      } catch (error) {
-        console.error('Erro ao buscar períodos:', error)
-      }
-    }
-
-    fetchPeriods()
-  }, [tenant])
-
-  useEffect(() => {
-    // Função auxiliar para verificar se uma despesa é de imposto
-    const isTaxExpense = (expense) => {
-      if (!expense) return false;
-      
-      const taxTerms = [
-        'imposto', 'impostos', 
-        'tax', 'taxes', 
-        'tributo', 'tributos',
-        'fiscal', 'fiscais',
-        'irpf', 'irpj', 'inss', 'iss', 'icms', 'pis', 'cofins',
-        'contribuição'
-      ];
-      
-      // Verificar na categoria
-      if (expense.category) {
-        const categoryLower = expense.category.toLowerCase();
-        if (taxTerms.some(term => categoryLower.includes(term))) {
-          return true;
-        }
-      }
-      
-      // Verificar no nome
-      if (expense.name) {
-        const nameLower = expense.name.toLowerCase();
-        if (taxTerms.some(term => nameLower.includes(term))) {
-          return true;
-        }
-      }
-      
-      // Verificar na descrição
-      if (expense.description) {
-        const descriptionLower = expense.description.toLowerCase();
-        if (taxTerms.some(term => descriptionLower.includes(term))) {
-          return true;
-        }
-      }
-      
-      // Verificar no nome do fornecedor
-      if (expense.supplierName) {
-        const supplierLower = expense.supplierName.toLowerCase();
-        if (taxTerms.some(term => supplierLower.includes(term))) {
-          return true;
-        }
-      }
-      
-      return false;
-    };
-    
     const fetchData = async () => {
       setIsLoading(true)
       try {
-        // Buscar dados da API com o período selecionado
-        const periodParam = selectedPeriod === 'current' ? '' : `?period=${selectedPeriod}`
-        
+        // Fetch income and bills data first to extract periods
         const [incomesResponse, expensesResponse] = await Promise.all([
-          fetch(`/api/${tenant}/income${periodParam}`),
-          fetch(`/api/${tenant}/bills${periodParam}`)
+          fetch(`/api/${tenant}/income`),
+          fetch(`/api/${tenant}/bills`)
         ])
 
         if (!incomesResponse.ok || !expensesResponse.ok) {
-          // Se a API retornar erro, mostrar dados zerados
+          // If API returns error, create default periods
+          createDefaultTimeFrames()
+          return
+        }
+
+        const [incomesData, expensesData] = await Promise.all([
+          incomesResponse.json(),
+          expensesResponse.json()
+        ])
+
+        // Extract time frames from actual data
+        createTimeFramesFromData(incomesData, expensesData)
+        
+        // Process all data by default
+        processApiData(incomesData, expensesData, 'all')
+      } catch (error) {
+        console.error('Erro ao buscar dados:', error)
+        createDefaultTimeFrames()
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    // Function to create time frame options from data
+    const createTimeFramesFromData = (incomes, expenses) => {
+      const allDates = [
+        ...incomes.map(income => new Date(income.date)),
+        ...expenses.map(expense => new Date(expense.date))
+      ]
+
+      if (allDates.length === 0) {
+        createDefaultTimeFrames()
+        return
+      }
+
+      // Sort dates to find min and max
+      allDates.sort((a, b) => a - b)
+      const oldestDate = allDates[0]
+      const newestDate = allDates[allDates.length - 1]
+      
+      // Create time frame options
+      const timeFrames = [
+        {
+          label: 'Todo o período',
+          value: 'all',
+          startDate: oldestDate,
+          endDate: new Date() // Use current date as end date
+        }
+      ]
+      
+      // Current month
+      const now = new Date()
+      const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+      const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+      const currentMonthName = now.toLocaleString('pt-BR', { month: 'long' })
+      
+      timeFrames.push({
+        label: `${currentMonthName} ${now.getFullYear()}`,
+        value: 'current-month',
+        startDate: currentMonthStart,
+        endDate: currentMonthEnd
+      })
+      
+      // Last 3 months
+      const threeMonthsAgo = new Date(now)
+      threeMonthsAgo.setMonth(now.getMonth() - 3)
+      
+      timeFrames.push({
+        label: 'Últimos 3 meses',
+        value: 'last-3-months',
+        startDate: threeMonthsAgo,
+        endDate: now
+      })
+      
+      // Last 6 months
+      const sixMonthsAgo = new Date(now)
+      sixMonthsAgo.setMonth(now.getMonth() - 6)
+      
+      timeFrames.push({
+        label: 'Últimos 6 meses',
+        value: 'last-6-months',
+        startDate: sixMonthsAgo,
+        endDate: now
+      })
+      
+      // Current year
+      const currentYearStart = new Date(now.getFullYear(), 0, 1)
+      const currentYearEnd = new Date(now.getFullYear(), 11, 31)
+      
+      timeFrames.push({
+        label: `Ano ${now.getFullYear()}`,
+        value: 'current-year',
+        startDate: currentYearStart,
+        endDate: currentYearEnd
+      })
+      
+      // Previous year if we have data from it
+      const previousYearStart = new Date(now.getFullYear() - 1, 0, 1)
+      const previousYearEnd = new Date(now.getFullYear() - 1, 11, 31)
+      
+      // Check if we have data from previous year
+      if (oldestDate < previousYearStart) {
+        timeFrames.push({
+          label: `Ano ${now.getFullYear() - 1}`,
+          value: 'previous-year',
+          startDate: previousYearStart,
+          endDate: previousYearEnd
+        })
+      }
+      
+      setAvailablePeriods(timeFrames)
+    }
+
+    // Function to create default time frames when no data is available
+    const createDefaultTimeFrames = () => {
+      const now = new Date()
+      
+      const timeFrames = [
+        {
+          label: 'Todo o período',
+          value: 'all',
+          startDate: new Date(now.getFullYear() - 1, now.getMonth(), 1),
+          endDate: now
+        },
+        {
+          label: `${now.toLocaleString('pt-BR', { month: 'long' })} ${now.getFullYear()}`,
+          value: 'current-month',
+          startDate: new Date(now.getFullYear(), now.getMonth(), 1),
+          endDate: new Date(now.getFullYear(), now.getMonth() + 1, 0)
+        },
+        {
+          label: 'Últimos 3 meses',
+          value: 'last-3-months',
+          startDate: new Date(now.setMonth(now.getMonth() - 3)),
+          endDate: new Date()
+        },
+        {
+          label: 'Últimos 6 meses',
+          value: 'last-6-months',
+          startDate: new Date(now.setMonth(now.getMonth() - 3)), // -6 total from original date
+          endDate: new Date()
+        },
+        {
+          label: `Ano ${now.getFullYear()}`,
+          value: 'current-year',
+          startDate: new Date(now.getFullYear(), 0, 1),
+          endDate: new Date(now.getFullYear(), 11, 31)
+        }
+      ]
+      
+      setAvailablePeriods(timeFrames)
+      processEmptyData()
+    }
+
+    fetchData()
+  }, [tenant])
+
+  useEffect(() => {
+    // Skip if we're already loading or if this is the initial load
+    if (isLoading || availablePeriods.length === 0) {
+      return
+    }
+    
+    const fetchPeriodData = async () => {
+      setIsLoading(true)
+      try {
+        // Always fetch all data and filter in the frontend
+        const [incomesResponse, expensesResponse] = await Promise.all([
+          fetch(`/api/${tenant}/income`),
+          fetch(`/api/${tenant}/bills`)
+        ])
+
+        if (!incomesResponse.ok || !expensesResponse.ok) {
           processEmptyData()
           return
         }
@@ -164,115 +248,67 @@ export function FinancialMetrics() {
           expensesResponse.json()
         ])
 
-        // Debug: Informações detalhadas sobre os dados de receita
-        console.log('Dados de receita recebidos:', incomesData);
-        if (incomesData.length > 0) {
-          console.log('Exemplo de estrutura de receita:', incomesData[0]);
-          console.log('Tipos de receita encontrados:', [...new Set(incomesData.map(income => income.type))]);
-          console.log('Total de receitas:', incomesData.length);
-          
-          // Contagem por tipo
-          const typeCounts = incomesData.reduce((acc, income) => {
-            const type = income.type || 'sem_tipo';
-            acc[type] = (acc[type] || 0) + 1;
-            return acc;
-          }, {});
-          console.log('Contagem por tipo:', typeCounts);
-        } else {
-          console.log('Nenhum dado de receita encontrado');
-        }
-        
-        // Debug: Informações detalhadas sobre os dados de despesa
-        console.log('Dados de despesa recebidos:', expensesData);
-        if (expensesData.length > 0) {
-          console.log('Exemplo de estrutura de despesa:', expensesData[0]);
-          console.log('Categorias de despesa encontradas:', [...new Set(expensesData.map(expense => expense.category))]);
-          console.log('Tipos de despesa encontrados:', [...new Set(expensesData.map(expense => expense.type))]);
-          console.log('Total de despesas:', expensesData.length);
-          
-          // Contagem por categoria
-          const categoryCounts = expensesData.reduce((acc, expense) => {
-            const category = expense.category || 'sem_categoria';
-            acc[category] = (acc[category] || 0) + 1;
-            return acc;
-          }, {});
-          console.log('Contagem por categoria de despesa:', categoryCounts);
-          
-          // Verificar especificamente despesas de impostos
-          const taxExpenses = expensesData.filter(expense => isTaxExpense(expense));
-          console.log('Despesas de impostos:', taxExpenses);
-          console.log('Total de despesas de impostos:', taxExpenses.length);
-          console.log('Valor total de impostos:', taxExpenses.reduce((sum, expense) => sum + expense.amount, 0));
-        } else {
-          console.log('Nenhum dado de despesa encontrado');
-        }
-        
-        // Verificar se os dados estão vazios
-        if (!incomesData.length && !expensesData.length) {
-          processEmptyData()
-          return
-        }
-
-        // Verificar se os dados são realmente do período selecionado
-        if (selectedPeriod !== 'current') {
-          const [year, month] = selectedPeriod.split('-').map(Number)
-          
-          // Verificar se há pelo menos um registro do período selecionado
-          const hasIncomeFromPeriod = incomesData.some(income => {
-            const incomeDate = new Date(income.date)
-            return incomeDate.getFullYear() === year && incomeDate.getMonth() + 1 === month
-          })
-          
-          const hasExpenseFromPeriod = expensesData.some(expense => {
-            const expenseDate = new Date(expense.date)
-            return expenseDate.getFullYear() === year && expenseDate.getMonth() + 1 === month
-          })
-          
-          // Se não houver dados específicos para o período, mostrar dados zerados
-          if (!hasIncomeFromPeriod && !hasExpenseFromPeriod) {
+        // If "all" is selected, use all data
+        if (selectedPeriod === 'all') {
+          if (incomesData.length === 0 && expensesData.length === 0) {
             processEmptyData()
-            return
+          } else {
+            processApiData(incomesData, expensesData, 'all')
           }
-          
-          // Filtrar apenas os dados do período selecionado
-          const filteredIncomesData = incomesData.filter(income => {
-            const incomeDate = new Date(income.date)
-            return incomeDate.getFullYear() === year && incomeDate.getMonth() + 1 === month
-          })
-          
-          const filteredExpensesData = expensesData.filter(expense => {
-            const expenseDate = new Date(expense.date)
-            return expenseDate.getFullYear() === year && expenseDate.getMonth() + 1 === month
-          })
-          
-          // Processar apenas os dados filtrados
-          processApiData(filteredIncomesData, filteredExpensesData, selectedPeriod)
+          setIsLoading(false)
           return
         }
-
-        // Processar dados para o período atual
-        processApiData(incomesData, expensesData, 'current')
-
+        
+        // Find the selected time frame
+        const timeFrame = availablePeriods.find(p => p.value === selectedPeriod)
+        
+        if (!timeFrame) {
+          console.error('Período selecionado não encontrado:', selectedPeriod)
+          processEmptyData()
+          setIsLoading(false)
+          return
+        }
+        
+        // Filter data based on the selected time frame
+        const startDate = new Date(timeFrame.startDate)
+        const endDate = new Date(timeFrame.endDate)
+        
+        // Set time to beginning and end of day for accurate comparison
+        startDate.setHours(0, 0, 0, 0)
+        endDate.setHours(23, 59, 59, 999)
+        
+        const filteredIncomesData = incomesData.filter(income => {
+          const incomeDate = new Date(income.date)
+          return incomeDate >= startDate && incomeDate <= endDate
+        })
+        
+        const filteredExpensesData = expensesData.filter(expense => {
+          const expenseDate = new Date(expense.date)
+          return expenseDate >= startDate && expenseDate <= endDate
+        })
+        
+        if (filteredIncomesData.length === 0 && filteredExpensesData.length === 0) {
+          processEmptyData()
+        } else {
+          processApiData(filteredIncomesData, filteredExpensesData, selectedPeriod)
+        }
       } catch (error) {
-        console.error('Erro ao buscar dados:', error)
-        // Em caso de erro, mostrar dados zerados
+        console.error('Erro ao buscar dados para o período:', error)
         processEmptyData()
       } finally {
         setIsLoading(false)
       }
     }
 
-    if (selectedPeriod) {
-      fetchData()
-    }
-  }, [tenant, selectedPeriod])
+    fetchPeriodData()
+  }, [tenant, selectedPeriod, availablePeriods])
 
   // Função para gerar dados vazios quando não há dados para o período
   const processEmptyData = () => {
     // Obter o período selecionado para exibição
-    let periodoLabel = 'Período atual'
+    let periodoLabel = 'Todo o período'
     
-    if (selectedPeriod !== 'current') {
+    if (selectedPeriod !== 'all') {
       const selectedPeriodObj = availablePeriods.find(p => p.value === selectedPeriod)
       periodoLabel = selectedPeriodObj ? selectedPeriodObj.label : 'Período selecionado'
     }
@@ -321,7 +357,7 @@ export function FinancialMetrics() {
   }
 
   // Função para processar os dados da API
-  const processApiData = (incomesData, expensesData, period = 'current') => {
+  const processApiData = (incomesData, expensesData, period = 'all') => {
     console.log('Processando dados financeiros para o período:', period);
     console.log('Total de receitas recebidas:', incomesData.length);
     
@@ -597,17 +633,11 @@ export function FinancialMetrics() {
     const lucroLiquido = lucroBruto - despesasTotais;
     
     // Determinar o período para exibição
-    let periodoLabel = 'Período atual'
+    let periodoLabel = 'Todo o período'
     
-    if (period !== 'current') {
+    if (period !== 'all') {
       const selectedPeriodObj = availablePeriods.find(p => p.value === period)
       periodoLabel = selectedPeriodObj ? selectedPeriodObj.label : 'Período selecionado'
-    } else {
-      // Obter mês e ano atuais para o período atual
-      const data = new Date()
-      const mesAtual = data.toLocaleString('pt-BR', { month: 'long' })
-      const anoAtual = data.getFullYear()
-      periodoLabel = `${mesAtual} ${anoAtual}`
     }
     
     // Estruturar dados detalhados
