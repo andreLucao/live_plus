@@ -88,6 +88,9 @@ export async function PUT(request, { params }) {
         tenantPath: tenant, // Garantindo que usamos o tenant dos parâmetros da URL
         role: body.role || 'user',
         status: body.status || 'Active',
+        // Add cellphone and cpf if provided
+        ...(body.cellphone && { cellphone: body.cellphone }),
+        ...(body.cpf && { cpf: body.cpf }),
         // Outros campos padrão podem ser adicionados aqui
       });
 
@@ -104,6 +107,8 @@ export async function PUT(request, { params }) {
             role: newUser.role,
             status: newUser.status,
             tenantPath: newUser.tenantPath,
+            cellphone: newUser.cellphone,
+            cpf: newUser.cpf,
             createdAt: newUser.createdAt
           }
         },
@@ -123,6 +128,9 @@ export async function PUT(request, { params }) {
             email: body.email,
             role: body.role,
             status: body.status,
+            // Add cellphone and cpf if provided
+            ...(body.cellphone !== undefined && { cellphone: body.cellphone }),
+            ...(body.cpf !== undefined && { cpf: body.cpf }),
             // Only update medical details if they exist in the request
             ...(body.medicalDetails && { 
               medicalDetails: body.medicalDetails 

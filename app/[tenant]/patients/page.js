@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Plus, Search, Calendar, Clock, AlertCircle, Users, Mail, Filter } from "lucide-react";
+import { Plus, Search, Calendar, Clock, AlertCircle, Users, Mail, Filter, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -41,6 +41,8 @@ export default function PatientsPage() {
   // Estados para o modal de novo paciente
   const [showNewPatientDialog, setShowNewPatientDialog] = useState(false);
   const [newPatientEmail, setNewPatientEmail] = useState("");
+  const [newPatientCellphone, setNewPatientCellphone] = useState("");
+  const [newPatientCPF, setNewPatientCPF] = useState("");
   const [isCreatingPatient, setIsCreatingPatient] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
@@ -121,6 +123,8 @@ export default function PatientsPage() {
         },
         body: JSON.stringify({
           email: newPatientEmail,
+          cellphone: newPatientCellphone || undefined, // Only send if not empty
+          cpf: newPatientCPF || undefined, // Only send if not empty
           role: 'user', // Garantindo que o papel será 'user'
           status: 'Active',
           tenantPath: tenant // Enviando o tenant atual como tenantPath
@@ -137,6 +141,8 @@ export default function PatientsPage() {
       // Feedback de sucesso
       setSuccessMessage("Paciente criado com sucesso!");
       setNewPatientEmail("");
+      setNewPatientCellphone("");
+      setNewPatientCPF("");
       
       // Atualiza a lista de pacientes
       fetchPatients();
@@ -171,7 +177,8 @@ export default function PatientsPage() {
 
   // Filter patients based on search term and date range
   const filteredPatients = filterByDateRange(patients).filter(patient => 
-    patient.email.toLowerCase().includes(searchTerm.toLowerCase())
+    patient.email.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    (patient.cellphone && patient.cellphone.includes(searchTerm))
   );
 
   // Loading state
@@ -258,7 +265,7 @@ export default function PatientsPage() {
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                     <Input
                       id="search"
-                      placeholder="Buscar por email..."
+                      placeholder="Buscar por email ou celular..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="pl-10"
@@ -306,11 +313,21 @@ export default function PatientsPage() {
                       <Card className="hover:shadow-lg transition-shadow cursor-pointer bg-white dark:bg-gray-800 h-full">
                         <CardContent className="pt-6 h-full">
                           <div className="space-y-4">
-                            <div className="flex items-center gap-2">
-                              <Mail className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-                              <span className="font-medium text-gray-900 dark:text-gray-100 truncate">
-                                {patient.email}
-                              </span>
+                            <div className="flex flex-col gap-2">
+                              <div className="flex items-center gap-2">
+                                <Mail className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                                <span className="font-medium text-gray-900 dark:text-gray-100 truncate">
+                                  {patient.email}
+                                </span>
+                              </div>
+                              {patient.cellphone && (
+                                <div className="flex items-center gap-2">
+                                  <Phone className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                                  <span className="text-gray-700 dark:text-gray-300 truncate">
+                                    {patient.cellphone}
+                                  </span>
+                                </div>
+                              )}
                             </div>
                             <div className="flex flex-col gap-2">
                               <Badge variant="secondary" className="w-fit flex items-center gap-1 bg-[#eaf5fd] text-[#009EE3] dark:bg-blue-900 dark:text-blue-100">
@@ -348,15 +365,15 @@ export default function PatientsPage() {
           <DialogHeader>
             <DialogTitle>Adicionar Novo Paciente</DialogTitle>
             <DialogDescription>
-              Insira o email do paciente para criar uma nova conta.
+              Insira as informações do paciente para criar uma nova conta.
             </DialogDescription>
           </DialogHeader>
           
-          {/* Campo de email */}
           <div className="space-y-4 py-4">
+            {/* Campo de email */}
             <div className="space-y-2">
               <Label htmlFor="email" className="text-right">
-                Email
+                Email *
               </Label>
               <Input
                 id="email"
@@ -364,6 +381,36 @@ export default function PatientsPage() {
                 placeholder="email@exemplo.com"
                 value={newPatientEmail}
                 onChange={(e) => setNewPatientEmail(e.target.value)}
+                disabled={isCreatingPatient}
+              />
+            </div>
+            
+            {/* Campo de celular */}
+            <div className="space-y-2">
+              <Label htmlFor="cellphone" className="text-right">
+                Celular
+              </Label>
+              <Input
+                id="cellphone"
+                type="tel"
+                placeholder="(00) 00000-0000"
+                value={newPatientCellphone}
+                onChange={(e) => setNewPatientCellphone(e.target.value)}
+                disabled={isCreatingPatient}
+              />
+            </div>
+            
+            {/* Campo de CPF */}
+            <div className="space-y-2">
+              <Label htmlFor="cpf" className="text-right">
+                CPF
+              </Label>
+              <Input
+                id="cpf"
+                type="text"
+                placeholder="000.000.000-00"
+                value={newPatientCPF}
+                onChange={(e) => setNewPatientCPF(e.target.value)}
                 disabled={isCreatingPatient}
               />
             </div>
