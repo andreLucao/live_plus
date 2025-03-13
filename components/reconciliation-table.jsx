@@ -17,6 +17,7 @@ export function ReconciliationTable() {
   const [isLoading, setIsLoading] = useState(true)
   const [editingId, setEditingId] = useState(null)
   const [editValue, setEditValue] = useState('')
+  const [doctorEmailMap, setDoctorEmailMap] = useState({})
   const [summaryData, setSummaryData] = useState({
     pfResult: 0,
     pfIncome: 0,
@@ -37,12 +38,27 @@ export function ReconciliationTable() {
   const fetchData = async () => {
     try {
       setIsLoading(true)
-      const incomesResponse = await fetch(`/api/${tenant}/income`)
-
-      if (!incomesResponse.ok) {
-        throw new Error('Failed to fetch data')
+      
+      // Primeiro, buscar os dados dos médicos para obter o mapeamento de ID para email
+      const doctorsResponse = await fetch(`/api/${tenant}/users?role=doctor`)
+      if (!doctorsResponse.ok) {
+        throw new Error('Failed to fetch doctors data')
       }
-
+      const doctorsData = await doctorsResponse.json()
+      
+      // Criar mapeamento de ID para email
+      const emailMap = doctorsData.reduce((map, doctor) => {
+        map[doctor._id] = doctor.email
+        return map
+      }, {})
+      
+      setDoctorEmailMap(emailMap)
+      
+      // Buscar dados de receitas
+      const incomesResponse = await fetch(`/api/${tenant}/income`)
+      if (!incomesResponse.ok) {
+        throw new Error('Failed to fetch income data')
+      }
       const incomesData = await incomesResponse.json()
 
       // Processa apenas as receitas com seus valores conciliados
@@ -62,10 +78,14 @@ export function ReconciliationTable() {
           status = income.statusConciliacao || 'Não conciliado'
         }
         
+        // Buscar o email do médico pelo ID, se disponível
+        const doctorEmail = emailMap[income.name] || income.name
+        
         return {
           id: income._id,
           date: income.date,
-          description: income.name ? `Consulta: ${income.name}` : 'Receita',
+          description: doctorEmail ? `Consulta: ${doctorEmail}` : 'Receita',
+          doctorId: income.name,
           category: income.category || 'Receita',
           pfValue: income.paymentType === 'PF' ? income.amount : income.valorConciliado || 0,
           pjValue: income.paymentType === 'PJ' ? income.amount : income.valorConciliado || 0,
