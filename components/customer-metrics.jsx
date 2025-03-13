@@ -103,6 +103,16 @@ export function CustomerMetrics() {
         // Busca dados adicionais de clientes, transações, etc.
         console.log('Fetching data for tenant:', tenant)
         
+        // Fetch all doctors data to get email by ID
+        const doctorsResponse = await fetch(`/api/${tenant}/users?role=doctor`)
+        const doctorsData = await doctorsResponse.json()
+        
+        // Create a map of doctor IDs to their emails for easy lookup
+        const doctorEmailMap = doctorsData.reduce((map, doctor) => {
+          map[doctor._id] = doctor.email
+          return map
+        }, {})
+        
         const [clientsResponse, usersResponse, proceduresResponse] = await Promise.all([
           fetch(`/api/${tenant}/patients`),
           fetch(`/api/${tenant}/users?role=user`),
@@ -225,7 +235,7 @@ export function CustomerMetrics() {
         ])
 
         // Atualiza dados de profissionais no carregamento inicial
-        updateProfessionalData(incomesData, appointmentsData);
+        updateProfessionalData(incomesData, appointmentsData, doctorEmailMap);
 
         // Calcular métricas de clientes para o novo gráfico
         // Novos clientes (usuários com role="user" criados nos últimos 30 dias)
@@ -293,26 +303,29 @@ export function CustomerMetrics() {
   }, [tenant]);
 
   // Função para calcular e atualizar métricas dos profissionais
-  const updateProfessionalData = (incomesData, appointmentsData) => {
+  const updateProfessionalData = (incomesData, appointmentsData, doctorEmailMap = {}) => {
     // Extrair nomes de médicos únicos de receitas (usando name)
-    const uniqueDoctorNamesFromIncomes = [...new Set(incomesData.map(income => income.name))].filter(Boolean);
+    const uniqueDoctorIdsFromIncomes = [...new Set(incomesData.map(income => income.name))].filter(Boolean);
     
     // Extrair nomes de profissionais únicos de agendamentos (usando professional)
-    const uniqueProfessionalNamesFromAppointments = [...new Set(appointmentsData.map(appt => appt.professional))].filter(Boolean);
+    const uniqueProfessionalIdsFromAppointments = [...new Set(appointmentsData.map(appt => appt.professional))].filter(Boolean);
     
     // Combinar as duas listas de profissionais
-    const uniqueDoctorNames = [...new Set([...uniqueDoctorNamesFromIncomes, ...uniqueProfessionalNamesFromAppointments])].filter(Boolean);
+    const uniqueDoctorIds = [...new Set([...uniqueDoctorIdsFromIncomes, ...uniqueProfessionalIdsFromAppointments])].filter(Boolean);
     
-    console.log('Unique doctor names:', uniqueDoctorNames);
+    console.log('Unique doctor IDs:', uniqueDoctorIds);
 
     // Processar dados para métricas por médico
-    const professionalRevenues = uniqueDoctorNames.map(doctorName => {
+    const professionalRevenues = uniqueDoctorIds.map(doctorId => {
+      // Get doctor email from map or use ID if not found
+      const doctorEmail = doctorEmailMap[doctorId] || doctorId;
+      
       // Filtrar transações associadas a este médico usando o campo name
       const doctorIncomes = incomesData.filter(income => 
-        income.name === doctorName
+        income.name === doctorId
       );
       
-      console.log(`Doctor ${doctorName} has ${doctorIncomes.length} incomes`);
+      console.log(`Doctor ${doctorEmail} has ${doctorIncomes.length} incomes`);
       
       // Calcular receita total
       const totalRevenue = doctorIncomes.reduce((sum, income) => sum + income.amount, 0);
@@ -324,7 +337,8 @@ export function CustomerMetrics() {
       const avgTicket = doctorIncomes.length > 0 ? totalRevenue / doctorIncomes.length : 0;
       
       return {
-        name: doctorName,
+        id: doctorId,
+        name: doctorEmail,
         revenue: totalRevenue,
         patients: uniquePatients,
         averageTicket: avgTicket,
@@ -336,13 +350,16 @@ export function CustomerMetrics() {
     setDoctorRevenueData(professionalRevenues);
 
     // Processar dados de agendamentos por profissional
-    const professionalAppointments = uniqueDoctorNames.map(doctorName => {
+    const professionalAppointments = uniqueDoctorIds.map(doctorId => {
+      // Get doctor email from map or use ID if not found
+      const doctorEmail = doctorEmailMap[doctorId] || doctorId;
+      
       // Filtrar agendamentos deste profissional usando o campo professional
       const doctorAppts = appointmentsData.filter(appt => 
-        appt.professional === doctorName
+        appt.professional === doctorId
       );
       
-      console.log(`Doctor ${doctorName} has ${doctorAppts.length} appointments`);
+      console.log(`Doctor ${doctorEmail} has ${doctorAppts.length} appointments`);
       
       // Contar agendamentos por status
       const pendingAppointments = doctorAppts.filter(appt => appt.status === 'Pending').length;
@@ -364,13 +381,14 @@ export function CustomerMetrics() {
       const otherServices = doctorAppts.length - consultations - procedures;
       
       // Encontrar a receita correspondente para este médico
-      const revenueData = professionalRevenues.find(doc => doc.name === doctorName) || {
+      const revenueData = professionalRevenues.find(doc => doc.id === doctorId) || {
         revenue: 0,
         patients: 0
       };
       
       return {
-        name: doctorName,
+        id: doctorId,
+        name: doctorEmail,
         consultations,
         procedures,
         otherServices,
@@ -400,17 +418,17 @@ export function CustomerMetrics() {
   };
 
   // Função para selecionar médico
-  const handleDoctorSelect = (doctorName) => {
-    setSelectedDoctor(doctorName);
+  const handleDoctorSelect = (doctorId) => {
+    setSelectedDoctor(doctorId);
   };
 
   // Dados filtrados por médico selecionado
   const filteredDoctorRevenueData = selectedDoctor
-    ? doctorRevenueData.filter(doctor => doctor.name === selectedDoctor)
+    ? doctorRevenueData.filter(doctor => doctor.id === selectedDoctor)
     : doctorRevenueData;
 
   const filteredDoctorAppointmentsData = selectedDoctor
-    ? doctorAppointmentsData.filter(doctor => doctor.name === selectedDoctor)
+    ? doctorAppointmentsData.filter(doctor => doctor.id === selectedDoctor)
     : doctorAppointmentsData;
 
   // Componente de loading
@@ -539,7 +557,7 @@ export function CustomerMetrics() {
           >
             <option value="">Todos os Médicos</option>
             {doctorRevenueData.map(doctor => (
-              <option key={doctor.name} value={doctor.name}>{doctor.name}</option>
+              <option key={doctor.id} value={doctor.id}>{doctor.name}</option>
             ))}
           </select>
         </div>
@@ -646,7 +664,7 @@ export function CustomerMetrics() {
                     <div className="flex justify-between items-center">
                       <span className="text-sm">Cancelados</span>
                       <span className="text-sm font-medium">
-                        {formatNumber(filteredDoctorAppointmentsData.reduce((sum, doc) => sum + doc.canceledAppointments, 0))}
+                      {formatNumber(filteredDoctorAppointmentsData.reduce((sum, doc) => sum + doc.canceledAppointments, 0))}
                       </span>
                     </div>
                   </div>
@@ -654,8 +672,9 @@ export function CustomerMetrics() {
               </div>
             </CardContent>
           </Card>
-{/* Novo Card: Detalhamento de Agendamentos por Médico */}
-<Card className="col-span-2">
+
+          {/* Novo Card: Detalhamento de Agendamentos por Médico */}
+          <Card className="col-span-2">
             <CardHeader className="pb-2">
               <CardTitle className="text-base">Detalhamento de Agendamentos por Médico</CardTitle>
               <CardDescription>Análise completa dos agendamentos por profissional</CardDescription>
@@ -735,32 +754,32 @@ export function CustomerMetrics() {
               <p><span className="font-medium">Transações:</span> {selectedDoctorData.transactionCount || 0}</p>
               
               {/* Adicionar informações sobre agendamentos se disponíveis */}
-              {doctorAppointmentsData.find(d => d.name === selectedDoctorData.name) && (
+              {doctorAppointmentsData.find(d => d.id === selectedDoctorData.id) && (
                 <>
                   <p className="mt-4 font-medium">Agendamentos:</p>
                   <div className="grid grid-cols-2 gap-2 mt-2">
                     <div className="bg-gray-100 p-2 rounded">
                       <p className="text-sm text-gray-500">Total</p>
                       <p className="font-medium">
-                        {formatNumber(doctorAppointmentsData.find(d => d.name === selectedDoctorData.name).total)}
+                        {formatNumber(doctorAppointmentsData.find(d => d.id === selectedDoctorData.id).total)}
                       </p>
                     </div>
                     <div className="bg-gray-100 p-2 rounded">
                       <p className="text-sm text-gray-500">Consultas</p>
                       <p className="font-medium">
-                        {formatNumber(doctorAppointmentsData.find(d => d.name === selectedDoctorData.name).consultations)}
+                        {formatNumber(doctorAppointmentsData.find(d => d.id === selectedDoctorData.id).consultations)}
                       </p>
                     </div>
                     <div className="bg-gray-100 p-2 rounded">
                       <p className="text-sm text-gray-500">Procedimentos</p>
                       <p className="font-medium">
-                        {formatNumber(doctorAppointmentsData.find(d => d.name === selectedDoctorData.name).procedures)}
+                        {formatNumber(doctorAppointmentsData.find(d => d.id === selectedDoctorData.id).procedures)}
                       </p>
                     </div>
                     <div className="bg-gray-100 p-2 rounded">
                       <p className="text-sm text-gray-500">Confirmados</p>
                       <p className="font-medium">
-                        {formatNumber(doctorAppointmentsData.find(d => d.name === selectedDoctorData.name).confirmedAppointments)}
+                        {formatNumber(doctorAppointmentsData.find(d => d.id === selectedDoctorData.id).confirmedAppointments)}
                       </p>
                     </div>
                   </div>
