@@ -269,9 +269,7 @@ export default function ExpensesPage() {
       if (!response.ok) throw new Error('Failed to fetch doctors')
       const data = await response.json()
       console.log('Doctors loaded:', data)
-      // Filter users with role="doctor"
-      const doctorsList = data.filter(user => user.role === "doctor")
-      setDoctors(doctorsList)
+      setDoctors(data)
     } catch (error) {
       console.error("Error loading doctors:", error)
       setError("Failed to load doctors list")
@@ -280,6 +278,9 @@ export default function ExpensesPage() {
 
   // Helper function to get doctor name from ID
   const getDoctorName = (doctorId) => {
+    // For debugging
+    console.log('Getting name for doctorId:', doctorId)
+    
     const doctor = doctors.find(d => d._id === doctorId)
     if (!doctor) return doctorId
     
@@ -603,7 +604,7 @@ export default function ExpensesPage() {
                           <div className="flex flex-col gap-2 flex-1">
                             <div className="flex items-center gap-2">
                               <span className="font-medium text-gray-800 dark:text-gray-200">
-                                {bill.name}
+                                {getDoctorName(bill.name)}
                               </span>
                               <Badge variant="outline" className="text-xs">
                                 {bill.paymentType}
@@ -611,7 +612,6 @@ export default function ExpensesPage() {
                             </div>
                             <div className="flex flex-col">
                               <span className="font-medium">{bill.supplierName}</span>
-                              <span className="text-sm text-gray-500">{getDoctorName(bill.name)}</span>
                             </div>
                           </div>
                           <div className="flex flex-wrap items-center gap-2 md:gap-4">
