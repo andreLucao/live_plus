@@ -6,23 +6,23 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { 
-  BarChart, Bar, PieChart, Pie, Cell, ResponsiveContainer, 
+  BarChart, Bar, ResponsiveContainer, 
   Tooltip, XAxis, YAxis, CartesianGrid, Legend, LineChart, Line
 } from "recharts"
-import { Download, BarChart3, PieChartIcon } from "lucide-react"
+import { Download, BarChart3, CalendarIcon } from "lucide-react"
 
 export function CustomerMetrics() {
   const [metrics, setMetrics] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [doctorRevenueData, setDoctorRevenueData] = useState([])
   const [doctorAppointmentsData, setDoctorAppointmentsData] = useState([])
-  const [chartType, setChartType] = useState("bar")
   const [selectedDoctorData, setSelectedDoctorData] = useState(null)
   const [showModal, setShowModal] = useState(false)
   const [clientMetricsData, setClientMetricsData] = useState([])
   const [selectedDoctor, setSelectedDoctor] = useState(null)
   const [appointments, setAppointments] = useState([])
   const [professionals, setProfessionals] = useState([])
+  const [incomes, setIncomes] = useState([])
   const { tenant } = useParams()
 
   // Definir esquemas de cores para os gráficos
@@ -77,36 +77,49 @@ export function CustomerMetrics() {
     }
   }
 
+  // Fetch das receitas
+  const fetchIncomes = async () => {
+    try {
+      const response = await fetch(`/api/${tenant}/income`)
+      if (!response.ok) throw new Error('Failed to fetch incomes')
+      const data = await response.json()
+      console.log('Incomes loaded:', data)
+      setIncomes(data)
+      return data
+    } catch (error) {
+      console.error("Error loading incomes:", error)
+      return []
+    }
+  }
+
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Busca profissionais e agendamentos primeiro
+        // Busca profissionais, agendamentos e receitas
         const professionalsList = await fetchProfessionals()
         const appointmentsData = await fetchAppointments()
+        const incomesData = await fetchIncomes()
         
         // Busca dados adicionais de clientes, transações, etc.
         console.log('Fetching data for tenant:', tenant)
         
-        const [clientsResponse, incomesResponse, usersResponse, proceduresResponse] = await Promise.all([
+        const [clientsResponse, usersResponse, proceduresResponse] = await Promise.all([
           fetch(`/api/${tenant}/patients`),
-          fetch(`/api/${tenant}/income`),
           fetch(`/api/${tenant}/users?role=user`),
           fetch(`/api/${tenant}/procedures`)
         ])
 
-        if (!clientsResponse.ok || !incomesResponse.ok || !usersResponse.ok || !proceduresResponse.ok) {
+        if (!clientsResponse.ok || !usersResponse.ok || !proceduresResponse.ok) {
           console.error('API response not OK:', {
             clients: clientsResponse.status,
-            incomes: incomesResponse.status,
             users: usersResponse.status,
             procedures: proceduresResponse.status
           })
           throw new Error('Failed to fetch data')
         }
 
-        const [clientsData, incomesData, usersData, proceduresData] = await Promise.all([
+        const [clientsData, usersData, proceduresData] = await Promise.all([
           clientsResponse.json(),
-          incomesResponse.json(),
           usersResponse.json(),
           proceduresResponse.json()
         ])
@@ -134,7 +147,7 @@ export function CustomerMetrics() {
         const activeClients = new Set(
           incomesData
             .filter(income => new Date(income.date) >= twoMonthsAgo)
-            .map(income => income.clientId)
+            .map(income => income.patientName)
         ).size
 
         // Calcula clientes ativos do mês passado para comparação
@@ -144,7 +157,7 @@ export function CustomerMetrics() {
               const date = new Date(income.date)
               return date >= twoMonthsAgo && date < lastMonth
             })
-            .map(income => income.clientId)
+            .map(income => income.patientName)
         ).size
 
         // Calcula ticket médio
@@ -168,8 +181,8 @@ export function CustomerMetrics() {
           : 0
 
         // Calcula taxa de retenção
-        const currentMonthClients = new Set(currentMonthTransactions.map(t => t.clientId))
-        const lastMonthClients = new Set(lastMonthTransactions.map(t => t.clientId))
+        const currentMonthClients = new Set(currentMonthTransactions.map(t => t.patientName))
+        const lastMonthClients = new Set(lastMonthTransactions.map(t => t.patientName))
         const retainedClients = [...currentMonthClients].filter(id => lastMonthClients.has(id)).length
         const retentionRate = lastMonthClients.size > 0
           ? (retainedClients / lastMonthClients.size) * 100
@@ -211,78 +224,8 @@ export function CustomerMetrics() {
           }
         ])
 
-        // ALTERAÇÃO PRINCIPAL: Identificar profissionais únicos nos agendamentos
-        // Extrair nomes de profissionais únicos dos agendamentos
-        const uniqueProfessionalNames = [...new Set(appointmentsData.map(appt => appt.professional))].filter(Boolean);
-        console.log('Unique professional names from appointments:', uniqueProfessionalNames);
-
-        // Processar dados para métricas por médico (agora usando o campo professional)
-        const professionalRevenues = uniqueProfessionalNames.map(professionalName => {
-          // Filtrar transações associadas a este profissional usando professional no income
-          const professionalIncomes = incomesData.filter(income => 
-            income.professional === professionalName
-          );
-          
-          console.log(`Professional ${professionalName} has ${professionalIncomes.length} incomes`);
-          
-          // Calcular receita total
-          const totalRevenue = professionalIncomes.reduce((sum, income) => sum + income.amount, 0);
-          
-          // Contar pacientes únicos
-          const uniquePatients = new Set(professionalIncomes.map(income => income.clientId)).size;
-          
-          return {
-            name: professionalName,
-            revenue: totalRevenue,
-            patients: uniquePatients
-          };
-        }).sort((a, b) => b.revenue - a.revenue); // Ordenar por receita, do maior para o menor
-
-        console.log('Professional revenues calculated:', professionalRevenues);
-        setDoctorRevenueData(professionalRevenues);
-
-        // Processar dados de agendamentos por profissional
-        const professionalAppointments = uniqueProfessionalNames.map(professionalName => {
-          // Filtrar agendamentos deste profissional usando o campo professional
-          const professionalAppts = appointmentsData.filter(appt => 
-            appt.professional === professionalName
-          );
-          
-          console.log(`Professional ${professionalName} has ${professionalAppts.length} appointments`);
-          
-          // Contar agendamentos por status
-          const pendingAppointments = professionalAppts.filter(appt => appt.status === 'Pending').length;
-          const confirmedAppointments = professionalAppts.filter(appt => appt.status === 'Confirmed').length;
-          const canceledAppointments = professionalAppts.filter(appt => appt.status === 'Canceled').length;
-          
-          // Por tipo de serviço (usando o campo service)
-          const consultations = professionalAppts.filter(appt => 
-            appt.service?.includes('Consulta') || appt.service?.includes('consulta')
-          ).length;
-          
-          const procedures = professionalAppts.filter(appt => 
-            appt.service?.includes('Procedimento') || 
-            appt.service?.includes('Exame') || 
-            appt.service?.includes('procedimento') || 
-            appt.service?.includes('exame')
-          ).length;
-          
-          const otherServices = professionalAppts.length - consultations - procedures;
-          
-          return {
-            name: professionalName,
-            consultations,
-            procedures,
-            otherServices,
-            pendingAppointments,
-            confirmedAppointments,
-            canceledAppointments,
-            total: professionalAppts.length,
-          };
-        }).sort((a, b) => b.total - a.total); // Ordenar por total de atendimentos, do maior para o menor
-
-        console.log('Professional appointments calculated:', professionalAppointments);
-        setDoctorAppointmentsData(professionalAppointments);
+        // Atualiza dados de profissionais no carregamento inicial
+        updateProfessionalData(incomesData, appointmentsData);
 
         // Calcular métricas de clientes para o novo gráfico
         // Novos clientes (usuários com role="user" criados nos últimos 30 dias)
@@ -348,6 +291,101 @@ export function CustomerMetrics() {
 
     fetchData();
   }, [tenant]);
+
+  // Função para calcular e atualizar métricas dos profissionais
+  const updateProfessionalData = (incomesData, appointmentsData) => {
+    // Extrair nomes de médicos únicos de receitas (usando name)
+    const uniqueDoctorNamesFromIncomes = [...new Set(incomesData.map(income => income.name))].filter(Boolean);
+    
+    // Extrair nomes de profissionais únicos de agendamentos (usando professional)
+    const uniqueProfessionalNamesFromAppointments = [...new Set(appointmentsData.map(appt => appt.professional))].filter(Boolean);
+    
+    // Combinar as duas listas de profissionais
+    const uniqueDoctorNames = [...new Set([...uniqueDoctorNamesFromIncomes, ...uniqueProfessionalNamesFromAppointments])].filter(Boolean);
+    
+    console.log('Unique doctor names:', uniqueDoctorNames);
+
+    // Processar dados para métricas por médico
+    const professionalRevenues = uniqueDoctorNames.map(doctorName => {
+      // Filtrar transações associadas a este médico usando o campo name
+      const doctorIncomes = incomesData.filter(income => 
+        income.name === doctorName
+      );
+      
+      console.log(`Doctor ${doctorName} has ${doctorIncomes.length} incomes`);
+      
+      // Calcular receita total
+      const totalRevenue = doctorIncomes.reduce((sum, income) => sum + income.amount, 0);
+      
+      // Contar pacientes únicos
+      const uniquePatients = new Set(doctorIncomes.map(income => income.patientName)).size;
+      
+      // Calcular ticket médio para este médico
+      const avgTicket = doctorIncomes.length > 0 ? totalRevenue / doctorIncomes.length : 0;
+      
+      return {
+        name: doctorName,
+        revenue: totalRevenue,
+        patients: uniquePatients,
+        averageTicket: avgTicket,
+        transactionCount: doctorIncomes.length
+      };
+    }).sort((a, b) => b.revenue - a.revenue); // Ordenar por receita, do maior para o menor
+
+    console.log('Professional revenues calculated:', professionalRevenues);
+    setDoctorRevenueData(professionalRevenues);
+
+    // Processar dados de agendamentos por profissional
+    const professionalAppointments = uniqueDoctorNames.map(doctorName => {
+      // Filtrar agendamentos deste profissional usando o campo professional
+      const doctorAppts = appointmentsData.filter(appt => 
+        appt.professional === doctorName
+      );
+      
+      console.log(`Doctor ${doctorName} has ${doctorAppts.length} appointments`);
+      
+      // Contar agendamentos por status
+      const pendingAppointments = doctorAppts.filter(appt => appt.status === 'Pending').length;
+      const confirmedAppointments = doctorAppts.filter(appt => appt.status === 'Confirmed').length;
+      const canceledAppointments = doctorAppts.filter(appt => appt.status === 'Canceled').length;
+      
+      // Por tipo de serviço (usando o campo service)
+      const consultations = doctorAppts.filter(appt => 
+        appt.service?.includes('Consulta') || appt.service?.includes('consulta')
+      ).length;
+      
+      const procedures = doctorAppts.filter(appt => 
+        appt.service?.includes('Procedimento') || 
+        appt.service?.includes('Exame') || 
+        appt.service?.includes('procedimento') || 
+        appt.service?.includes('exame')
+      ).length;
+      
+      const otherServices = doctorAppts.length - consultations - procedures;
+      
+      // Encontrar a receita correspondente para este médico
+      const revenueData = professionalRevenues.find(doc => doc.name === doctorName) || {
+        revenue: 0,
+        patients: 0
+      };
+      
+      return {
+        name: doctorName,
+        consultations,
+        procedures,
+        otherServices,
+        pendingAppointments,
+        confirmedAppointments,
+        canceledAppointments,
+        total: doctorAppts.length,
+        revenue: revenueData.revenue,
+        patients: revenueData.patients
+      };
+    }).sort((a, b) => b.total - a.total); // Ordenar por total de atendimentos, do maior para o menor
+
+    console.log('Professional appointments calculated:', professionalAppointments);
+    setDoctorAppointmentsData(professionalAppointments);
+  };
 
   const calculateChange = (current, previous) => {
     if (!previous) return "+0";
@@ -440,7 +478,7 @@ export function CustomerMetrics() {
           ))}
         </div>
 
-        {/* Novos gráficos para a aba de Métricas de Clientes */}
+        {/* Gráficos para a aba de Métricas de Clientes */}
         <div className="grid gap-4 md:grid-cols-1">
           {/* Gráfico de Métricas de Clientes */}
           <Card className="col-span-1">
@@ -493,7 +531,7 @@ export function CustomerMetrics() {
       
       {/* Aba de Métricas por Médico */}
       <TabsContent value="doctors" className="space-y-4">
-        <div className="flex justify-end">
+        <div className="flex justify-end items-center">
           <select
             value={selectedDoctor || ''}
             onChange={(e) => handleDoctorSelect(e.target.value)}
@@ -509,78 +547,34 @@ export function CustomerMetrics() {
         <div className="grid gap-4 md:grid-cols-2">
           {/* Card de Receita por Médico */}
           <Card className="col-span-1">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <div>
-                <CardTitle className="text-base">Receita por Médico</CardTitle>
-                <CardDescription>Receita gerada por cada médico</CardDescription>
-              </div>
-              <div className="flex space-x-2">
-                <Button 
-                  variant={chartType === "bar" ? "default" : "outline"} 
-                  size="icon" 
-                  onClick={() => setChartType("bar")}
-                  className="h-8 w-8"
-                >
-                  <BarChart3 className="h-4 w-4" />
-                </Button>
-                <Button 
-                  variant={chartType === "pie" ? "default" : "outline"} 
-                  size="icon" 
-                  onClick={() => setChartType("pie")}
-                  className="h-8 w-8"
-                >
-                  <PieChartIcon className="h-4 w-4" />
-                </Button>
-              </div>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Receita por Médico</CardTitle>
+              <CardDescription>Receita gerada por cada médico</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="h-64">
-                {chartType === "bar" ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={filteredDoctorRevenueData.slice(0, 5)}
-                      margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                      <YAxis 
-                        tickFormatter={(value) => `R$${value/1000}K`}
-                        tick={{ fontSize: 12 }}
-                      />
-                      <Tooltip 
-                        formatter={(value) => [`${formatCurrency(value)}`, 'Receita']}
-                        labelFormatter={(label) => `Médico: ${label}`}
-                      />
-                      <Bar dataKey="revenue" fill="#0088FE" onClick={(data) => handleDoctorClick(data)} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={filteredDoctorRevenueData.slice(0, 5)}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="revenue"
-                        nameKey="name"
-                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                        onClick={(data) => handleDoctorClick(data.payload)}
-                      >
-                        {filteredDoctorRevenueData.slice(0, 5).map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(value) => formatCurrency(value)} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                )}
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={filteredDoctorRevenueData.slice(0, 5)}
+                    margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                    <YAxis 
+                      tickFormatter={(value) => `R$${value/1000}K`}
+                      tick={{ fontSize: 12 }}
+                    />
+                    <Tooltip 
+                      formatter={(value) => [`${formatCurrency(value)}`, 'Receita']}
+                      labelFormatter={(label) => `Médico: ${label}`}
+                    />
+                    <Bar dataKey="revenue" fill="#0088FE" onClick={(data) => handleDoctorClick(data)} />
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
               
               <div className="mt-4">
-                <h4 className="text-sm font-medium mb-2">Top 3 Médicos</h4>
+              <h4 className="text-sm font-medium mb-2">Top 3 Médicos</h4>
                 <div className="space-y-2">
                   {filteredDoctorRevenueData.slice(0, 3).map((doctor, index) => (
                     <div key={index} className="flex justify-between items-center text-sm">
@@ -643,7 +637,8 @@ export function CustomerMetrics() {
                         {formatNumber(filteredDoctorAppointmentsData.reduce((sum, doc) => sum + doc.pendingAppointments, 0))}
                       </span>
                     </div>
-                    <div className="flex justify-between items-center"><span className="text-sm">Confirmados</span>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm">Confirmados</span>
                       <span className="text-sm font-medium">
                         {formatNumber(filteredDoctorAppointmentsData.reduce((sum, doc) => sum + doc.confirmedAppointments, 0))}
                       </span>
@@ -659,7 +654,6 @@ export function CustomerMetrics() {
               </div>
             </CardContent>
           </Card>
-
 {/* Novo Card: Detalhamento de Agendamentos por Médico */}
 <Card className="col-span-2">
             <CardHeader className="pb-2">
@@ -737,6 +731,8 @@ export function CustomerMetrics() {
               <p><span className="font-medium">Nome:</span> {selectedDoctorData.name}</p>
               <p><span className="font-medium">Receita Total:</span> {formatCurrency(selectedDoctorData.revenue)}</p>
               <p><span className="font-medium">Pacientes Atendidos:</span> {selectedDoctorData.patients}</p>
+              <p><span className="font-medium">Ticket Médio:</span> {formatCurrency(selectedDoctorData.averageTicket || 0)}</p>
+              <p><span className="font-medium">Transações:</span> {selectedDoctorData.transactionCount || 0}</p>
               
               {/* Adicionar informações sobre agendamentos se disponíveis */}
               {doctorAppointmentsData.find(d => d.name === selectedDoctorData.name) && (
