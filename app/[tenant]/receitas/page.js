@@ -78,9 +78,8 @@ export default function HospitalIncomeManager() {
       const response = await fetch(`/api/${tenant}/users?role=doctor`)
       if (!response.ok) throw new Error('Failed to fetch doctors')
       const data = await response.json()
-      console.log('Doctors loaded:', data)
-      const doctorsList = data.filter(user => user.role === "doctor")
-      setDoctors(doctorsList)
+      console.log(`Doctors loaded for tenant ${tenant}:`, data)
+      setDoctors(data)
     } catch (error) {
       console.error("Error loading doctors:", error)
       setError("Failed to load doctors list")
@@ -88,17 +87,19 @@ export default function HospitalIncomeManager() {
   }
 
   const getDoctorName = (doctorId) => {
-    const doctor = doctors.find(d => d._id === doctorId)
-    if (!doctor) return doctorId
+    if (!doctorId) return "Unknown";
     
-    if (doctor.name) return doctor.name
+    const doctor = doctors.find(d => d._id === doctorId);
+    if (!doctor) return doctorId;
+    
+    if (doctor.name) return doctor.name;
     
     if (doctor.email) {
-      const emailParts = doctor.email.split(/[@.]/)[0]
-      return emailParts.charAt(0).toUpperCase() + emailParts.slice(1)
+      const emailParts = doctor.email.split(/[@.]/)[0];
+      return emailParts.charAt(0).toUpperCase() + emailParts.slice(1);
     }
     
-    return doctorId
+    return doctorId;
   }
 
   const addIncome = async (e) => {

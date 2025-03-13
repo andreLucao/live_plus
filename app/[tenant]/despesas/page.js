@@ -24,10 +24,10 @@ import Sidebar from "@/components/Sidebar"
 export default function ExpensesPage() {
   // Estado para armazenar a lista de despesas e controles da interface
   const [bills, setBills] = useState([])
-  const [newBill, setNewBill] = useState({ 
-    name: "", 
-    amount: "", 
-    date: "", 
+  const [newBill, setNewBill] = useState({
+    name: "",
+    amount: "",
+    date: "",
     category: "",
     supplierName: "",
     time: "",
@@ -100,10 +100,10 @@ export default function ExpensesPage() {
 
         if (!response.ok) throw new Error('Failed to add bill')
         await fetchBills()
-        setNewBill({ 
-          name: "", 
-          amount: "", 
-          date: "", 
+        setNewBill({
+          name: "",
+          amount: "",
+          date: "",
           category: "",
           supplierName: "",
           time: "",
@@ -182,10 +182,10 @@ export default function ExpensesPage() {
       if (!response.ok) throw new Error('Failed to update bill')
       await fetchBills()
       setEditingId(null)
-      setNewBill({ 
-        name: "", 
-        amount: "", 
-        date: "", 
+      setNewBill({
+        name: "",
+        amount: "",
+        date: "",
         category: "",
         supplierName: "",
         time: "",
@@ -201,10 +201,10 @@ export default function ExpensesPage() {
 
   const cancelEdit = () => {
     setEditingId(null)
-    setNewBill({ 
-      name: "", 
-      amount: "", 
-      date: "", 
+    setNewBill({
+      name: "",
+      amount: "",
+      date: "",
       category: "",
       supplierName: "",
       time: "",
@@ -216,13 +216,13 @@ export default function ExpensesPage() {
   // Função para filtrar dados por data
   const filterData = (data) => {
     if (!startDate && !endDate) return data
-    
+
     return data.filter(item => {
       const itemDate = new Date(item.date)
       const start = startDate ? new Date(startDate) : new Date(0)
       const end = endDate ? new Date(endDate) : new Date()
       end.setHours(23, 59, 59, 999)
-      
+
       return itemDate >= start && itemDate <= end
     })
   }
@@ -243,9 +243,9 @@ export default function ExpensesPage() {
 
   // Filtragem das despesas
   const filteredBills = filterData(bills).filter((bill) => {
-    const monthMatch = monthFilter === "all" || 
+    const monthMatch = monthFilter === "all" ||
       new Date(bill.date).getMonth() === Number.parseInt(monthFilter) - 1
-    const categoryMatch = categoryFilter === "all" || 
+    const categoryMatch = categoryFilter === "all" ||
       bill.category === categoryFilter
     const yearMatch = yearFilter === "all" ||
       new Date(bill.date).getFullYear().toString() === yearFilter
@@ -258,7 +258,7 @@ export default function ExpensesPage() {
   const totalSum = filteredBills.reduce((sum, bill) => sum + bill.amount, 0)
 
   // Anos únicos para filtro
-  const years = [...new Set(bills.map(bill => 
+  const years = [...new Set(bills.map(bill =>
     new Date(bill.date).getFullYear()
   ))].sort((a, b) => b - a)
 
@@ -268,7 +268,7 @@ export default function ExpensesPage() {
       const response = await fetch(`/api/${tenant}/users?role=doctor`)
       if (!response.ok) throw new Error('Failed to fetch doctors')
       const data = await response.json()
-      console.log('Doctors loaded:', data)
+      console.log(`Doctors loaded for tenant ${tenant}:`, data)
       setDoctors(data)
     } catch (error) {
       console.error("Error loading doctors:", error)
@@ -278,22 +278,21 @@ export default function ExpensesPage() {
 
   // Helper function to get doctor name from ID
   const getDoctorName = (doctorId) => {
-    // For debugging
-    console.log('Getting name for doctorId:', doctorId)
-    
-    const doctor = doctors.find(d => d._id === doctorId)
-    if (!doctor) return doctorId
-    
-    if (doctor.name) return doctor.name
-    
+    if (!doctorId) return "Unknown";
+
+    const doctor = doctors.find(d => d._id === doctorId);
+    if (!doctor) return doctorId;
+
+    if (doctor.name) return doctor.name;
+
     // Extract first name from email (before the dot or @ symbol)
     if (doctor.email) {
-      const emailParts = doctor.email.split(/[@.]/)[0]
+      const emailParts = doctor.email.split(/[@.]/)[0];
       // Capitalize first letter
-      return emailParts.charAt(0).toUpperCase() + emailParts.slice(1)
+      return emailParts.charAt(0).toUpperCase() + emailParts.slice(1);
     }
-    
-    return doctorId
+
+    return doctorId;
   }
 
   // Renderização do estado de carregamento
@@ -357,9 +356,9 @@ export default function ExpensesPage() {
                                   // Verifica se doctor._id existe e não está vazio
                                   doctor._id ? (
                                     <SelectItem key={doctor._id} value={doctor._id}>
-                                      {doctor.name || (doctor.email ? 
-                                        doctor.email.split(/[@.]/)[0].charAt(0).toUpperCase() + 
-                                        doctor.email.split(/[@.]/)[0].slice(1) : 
+                                      {doctor.name || (doctor.email ?
+                                        doctor.email.split(/[@.]/)[0].charAt(0).toUpperCase() +
+                                        doctor.email.split(/[@.]/)[0].slice(1) :
                                         doctor._id)}
                                     </SelectItem>
                                   ) : null
@@ -437,8 +436,8 @@ export default function ExpensesPage() {
                               value={newBill.date}
                               onChange={(e) => setNewBill({ ...newBill, date: e.target.value })}
                             />
-                            <Input 
-                              type="time" 
+                            <Input
+                              type="time"
                               className="w-[140px]"
                               value={newBill.time}
                               onChange={(e) => setNewBill({ ...newBill, time: e.target.value })}
@@ -676,5 +675,5 @@ export default function ExpensesPage() {
         </div>
       </main>
     </div>
-  )                      
+  );
 }

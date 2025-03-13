@@ -17,13 +17,25 @@ export async function GET(request, { params }) {
     const connection = await connectDB(tenant);
     const User = getUserModel(connection);
 
-    // Query users for the specific tenant with role='user'
-    const users = await User.find({ 
-      tenantPath: tenant,
+    // Get the role from query parameters if provided
+    const { searchParams } = new URL(request.url);
+    const role = searchParams.get('role');
+
+    // Build the query
+    const query = { 
+      tenantPath: tenant,  // Ensure we only get users from this tenant
       status: { $ne: 'Archived' } // Optionally exclude archived users
-    })
-    .select('-password') // Exclude password field
-    .sort({ createdAt: -1 });
+    };
+    
+    // Add role filter if provided
+    if (role) {
+      query.role = role;
+    }
+
+    // Query users for the specific tenant
+    const users = await User.find(query)
+      .select('-password') // Exclude password field
+      .sort({ createdAt: -1 });
 
     return NextResponse.json(users);
   } catch (error) {
