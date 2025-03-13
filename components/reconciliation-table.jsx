@@ -391,7 +391,7 @@ export function ReconciliationTable() {
         {/* Card Impostos Devidos */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Impostos Devidos</CardTitle>
+            <CardTitle className="text-lg">Estimativa de impostos</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold text-amber-600">
