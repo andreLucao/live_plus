@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { 
-  BarChart, Bar, ResponsiveContainer, 
+  BarChart, Bar, Cell, ResponsiveContainer, 
   Tooltip, XAxis, YAxis, CartesianGrid, Legend, LineChart, Line
 } from "recharts"
 import { Download, BarChart3, CalendarIcon } from "lucide-react"
