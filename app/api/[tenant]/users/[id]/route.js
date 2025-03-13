@@ -163,3 +163,47 @@ export async function PUT(request, { params }) {
     );
   }
 }
+
+export async function DELETE(request, { params }) {
+  try {
+    const id = await params;
+    const tenant = id.tenant;
+    const userId = id.id;
+
+    if (!tenant) {
+      return NextResponse.json({ error: 'Tenant is required' }, { status: 400 });
+    }
+
+    // Connect to the tenant's specific database
+    const connection = await connectDB(tenant);
+    const User = getUserModel(connection);
+
+    console.log(`Attempting to delete user with ID: ${userId} from tenant: ${tenant}`);
+
+    // Find and delete the user
+    const deletedUser = await User.findOneAndDelete({
+      _id: userId,
+      tenantPath: tenant
+    });
+
+    if (!deletedUser) {
+      console.log(`User not found: ${userId}`);
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      );
+    }
+
+    console.log(`User deleted successfully: ${userId}`);
+    return NextResponse.json({ 
+      message: 'User deleted successfully',
+      deletedUserId: userId
+    });
+  } catch (error) {
+    console.error('Error in DELETE /api/[tenant]/users/[id]:', error);
+    return NextResponse.json(
+      { error: 'Failed to delete user: ' + error.message },
+      { status: 500 }
+    );
+  }
+}

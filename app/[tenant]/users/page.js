@@ -39,6 +39,7 @@ export default function UsersPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [deleteConfirmation, setDeleteConfirmation] = useState("")
   const [itemToDelete, setItemToDelete] = useState(null)
+  const [isNewUserModalOpen, setIsNewUserModalOpen] = useState(false)
   const { tenant } = useParams()
 
   // Effect to load users when component mounts
@@ -89,16 +90,29 @@ export default function UsersPage() {
 
   const removeUser = async (id) => {
     try {
+      console.log('Attempting to delete user with ID:', id);
+      
       const response = await fetch(`/api/${tenant}/users/${id}`, {
         method: 'DELETE',
-      })
+        headers: {
+          'Content-Type': 'application/json'
+        },
+      });
 
-      if (!response.ok) throw new Error('Failed to delete user')
-      await fetchUsers()
-      setError("")
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Server response:', response.status, errorData);
+        throw new Error(`Failed to delete user: ${errorData.error || response.status}`);
+      }
+      
+      console.log('User deleted successfully');
+      
+      // Update the UI by removing the deleted user
+      setUsers(users.filter(user => user._id !== id));
+      setError("");
     } catch (error) {
-      console.error('Error deleting user:', error)
-      setError("Falha ao excluir usuário. Por favor, tente novamente.")
+      console.error('Error deleting user:', error);
+      setError(`Falha ao excluir usuário: ${error.message}`);
     }
   }
 
@@ -193,6 +207,48 @@ export default function UsersPage() {
     return roleMatch && statusMatch && emailMatch
   })
 
+  // Function to create a new user
+  const createNewUser = async () => {
+    try {
+      if (!newUser.email) {
+        setError("Email é obrigatório");
+        return;
+      }
+      
+      // Add tenantPath to ensure the backend knows which tenant this belongs to
+      const userData = {
+        ...newUser,
+        tenantPath: tenant
+      };
+      
+      const response = await fetch(`/api/${tenant}/users/new`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(`Failed to create user: ${errorData.error || response.status}`);
+      }
+      
+      // Close the modal and reset form
+      setIsNewUserModalOpen(false);
+      setNewUser({ 
+        email: "", 
+        role: "user", 
+        status: "Active"
+      });
+      
+      // Refresh the user list
+      await fetchUsers();
+      setError("");
+    } catch (error) {
+      console.error('Error creating user:', error);
+      setError(`Falha ao criar usuário: ${error.message}`);
+    }
+  };
+
   // Render loading state
   if (isLoading) {
     return (
@@ -225,6 +281,21 @@ export default function UsersPage() {
                   Total: {filteredUsers.length} usuários
                 </span>
               </div>
+              
+              <Button 
+                onClick={() => {
+                  setNewUser({ 
+                    email: "", 
+                    role: "user", 
+                    status: "Active"
+                  });
+                  setIsNewUserModalOpen(true);
+                }}
+                className="bg-[#009EE3] hover:bg-blue-700 text-white"
+              >
+                <User className="h-4 w-4 mr-2" />
+                Novo Usuário
+              </Button>
             </div>
 
             {/* Error message */}
@@ -404,6 +475,73 @@ export default function UsersPage() {
                       disabled={deleteConfirmation !== itemToDelete?.email}
                     >
                       Excluir
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            {/* New User Modal */}
+            <Dialog open={isNewUserModalOpen} onOpenChange={setIsNewUserModalOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Adicionar Novo Usuário</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={newUser.email}
+                      onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                      placeholder="email@exemplo.com"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="role">Função</Label>
+                    <Select
+                      value={newUser.role}
+                      onValueChange={(value) => setNewUser({ ...newUser, role: value })}
+                    >
+                      <SelectTrigger id="role">
+                        <SelectValue placeholder="Selecione uma função" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="user">Usuário</SelectItem>
+                        <SelectItem value="doctor">Médico</SelectItem>
+                        <SelectItem value="admin">Administrador</SelectItem>
+                        <SelectItem value="owner">Proprietário</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="status">Status</Label>
+                    <Select
+                      value={newUser.status}
+                      onValueChange={(value) => setNewUser({ ...newUser, status: value })}
+                    >
+                      <SelectTrigger id="status">
+                        <SelectValue placeholder="Selecione um status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Active">Ativo</SelectItem>
+                        <SelectItem value="Inactive">Inativo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="flex justify-end gap-4 pt-2">
+                    <Button variant="outline" onClick={() => setIsNewUserModalOpen(false)}>
+                      Cancelar
+                    </Button>
+                    <Button
+                      onClick={createNewUser}
+                      className="bg-[#009EE3] hover:bg-blue-700 text-white"
+                    >
+                      Adicionar Usuário
                     </Button>
                   </div>
                 </div>
