@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useParams } from "next/navigation"
+import { useFinance } from "@/app/contexts/FinanceContext"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { TrendingDown, TrendingUp, Calendar, Filter, Download, ArrowUpRight, ArrowDownRight, Info } from "lucide-react"
@@ -54,254 +55,200 @@ export function FinancialMetrics() {
   const [selectedPeriod, setSelectedPeriod] = useState('all')
   const [availablePeriods, setAvailablePeriods] = useState([])
   const { tenant } = useParams()
+  const { incomes, bills, isLoading: contextLoading } = useFinance()
 
+  // Effect to create time frames when data is available
   useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true)
-      try {
-        // Fetch income and bills data first to extract periods
-        const [incomesResponse, expensesResponse] = await Promise.all([
-          fetch(`/api/${tenant}/income`),
-          fetch(`/api/${tenant}/bills`)
-        ])
+    if (contextLoading) return
 
-        if (!incomesResponse.ok || !expensesResponse.ok) {
-          // If API returns error, create default periods
-          createDefaultTimeFrames()
-          return
-        }
+    // Extract time frames from actual data
+    createTimeFramesFromData(incomes, bills)
+  }, [incomes, bills, contextLoading])
 
-        const [incomesData, expensesData] = await Promise.all([
-          incomesResponse.json(),
-          expensesResponse.json()
-        ])
-
-        // Extract time frames from actual data
-        createTimeFramesFromData(incomesData, expensesData)
-        
-        // Process all data by default
-        processApiData(incomesData, expensesData, 'all')
-      } catch (error) {
-        console.error('Erro ao buscar dados:', error)
-        createDefaultTimeFrames()
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    // Function to create time frame options from data
-    const createTimeFramesFromData = (incomes, expenses) => {
-      const allDates = [
-        ...incomes.map(income => new Date(income.date)),
-        ...expenses.map(expense => new Date(expense.date))
-      ]
-
-      if (allDates.length === 0) {
-        createDefaultTimeFrames()
-        return
-      }
-
-      // Sort dates to find min and max
-      allDates.sort((a, b) => a - b)
-      const oldestDate = allDates[0]
-      const newestDate = allDates[allDates.length - 1]
-      
-      // Create time frame options
-      const timeFrames = [
-        {
-          label: 'Todo o período',
-          value: 'all',
-          startDate: oldestDate,
-          endDate: new Date() // Use current date as end date
-        }
-      ]
-      
-      // Current month
-      const now = new Date()
-      const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-      const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-      const currentMonthName = now.toLocaleString('pt-BR', { month: 'long' })
-      
-      timeFrames.push({
-        label: `${currentMonthName} ${now.getFullYear()}`,
-        value: 'current-month',
-        startDate: currentMonthStart,
-        endDate: currentMonthEnd
-      })
-      
-      // Last 3 months
-      const threeMonthsAgo = new Date(now)
-      threeMonthsAgo.setMonth(now.getMonth() - 3)
-      
-      timeFrames.push({
-        label: 'Últimos 3 meses',
-        value: 'last-3-months',
-        startDate: threeMonthsAgo,
-        endDate: now
-      })
-      
-      // Last 6 months
-      const sixMonthsAgo = new Date(now)
-      sixMonthsAgo.setMonth(now.getMonth() - 6)
-      
-      timeFrames.push({
-        label: 'Últimos 6 meses',
-        value: 'last-6-months',
-        startDate: sixMonthsAgo,
-        endDate: now
-      })
-      
-      // Current year
-      const currentYearStart = new Date(now.getFullYear(), 0, 1)
-      const currentYearEnd = new Date(now.getFullYear(), 11, 31)
-      
-      timeFrames.push({
-        label: `Ano ${now.getFullYear()}`,
-        value: 'current-year',
-        startDate: currentYearStart,
-        endDate: currentYearEnd
-      })
-      
-      // Previous year if we have data from it
-      const previousYearStart = new Date(now.getFullYear() - 1, 0, 1)
-      const previousYearEnd = new Date(now.getFullYear() - 1, 11, 31)
-      
-      // Check if we have data from previous year
-      if (oldestDate < previousYearStart) {
-        timeFrames.push({
-          label: `Ano ${now.getFullYear() - 1}`,
-          value: 'previous-year',
-          startDate: previousYearStart,
-          endDate: previousYearEnd
-        })
-      }
-      
-      setAvailablePeriods(timeFrames)
-    }
-
-    // Function to create default time frames when no data is available
-    const createDefaultTimeFrames = () => {
-      const now = new Date()
-      
-      const timeFrames = [
-        {
-          label: 'Todo o período',
-          value: 'all',
-          startDate: new Date(now.getFullYear() - 1, now.getMonth(), 1),
-          endDate: now
-        },
-        {
-          label: `${now.toLocaleString('pt-BR', { month: 'long' })} ${now.getFullYear()}`,
-          value: 'current-month',
-          startDate: new Date(now.getFullYear(), now.getMonth(), 1),
-          endDate: new Date(now.getFullYear(), now.getMonth() + 1, 0)
-        },
-        {
-          label: 'Últimos 3 meses',
-          value: 'last-3-months',
-          startDate: new Date(now.setMonth(now.getMonth() - 3)),
-          endDate: new Date()
-        },
-        {
-          label: 'Últimos 6 meses',
-          value: 'last-6-months',
-          startDate: new Date(now.setMonth(now.getMonth() - 3)), // -6 total from original date
-          endDate: new Date()
-        },
-        {
-          label: `Ano ${now.getFullYear()}`,
-          value: 'current-year',
-          startDate: new Date(now.getFullYear(), 0, 1),
-          endDate: new Date(now.getFullYear(), 11, 31)
-        }
-      ]
-      
-      setAvailablePeriods(timeFrames)
-      processEmptyData()
-    }
-
-    fetchData()
-  }, [tenant])
-
+  // Effect to process data when period changes or data is available
   useEffect(() => {
-    // Skip if we're already loading or if this is the initial load
-    if (isLoading || availablePeriods.length === 0) {
+    if (contextLoading || availablePeriods.length === 0) return
+
+    setIsLoading(true)
+    
+    // If "all" is selected, use all data
+    if (selectedPeriod === 'all') {
+      if (incomes.length === 0 && bills.length === 0) {
+        processEmptyData()
+      } else {
+        processApiData(incomes, bills, 'all')
+      }
+      setIsLoading(false)
       return
     }
     
-    const fetchPeriodData = async () => {
-      setIsLoading(true)
-      try {
-        // Always fetch all data and filter in the frontend
-        const [incomesResponse, expensesResponse] = await Promise.all([
-          fetch(`/api/${tenant}/income`),
-          fetch(`/api/${tenant}/bills`)
-        ])
+    // Find the selected time frame
+    const timeFrame = availablePeriods.find(p => p.value === selectedPeriod)
+    
+    if (!timeFrame) {
+      console.error('Período selecionado não encontrado:', selectedPeriod)
+      processEmptyData()
+      setIsLoading(false)
+      return
+    }
+    
+    // Filter data based on the selected time frame
+    const startDate = new Date(timeFrame.startDate)
+    const endDate = new Date(timeFrame.endDate)
+    
+    // Set time to beginning and end of day for accurate comparison
+    startDate.setHours(0, 0, 0, 0)
+    endDate.setHours(23, 59, 59, 999)
+    
+    const filteredIncomesData = incomes.filter(income => {
+      const incomeDate = new Date(income.date)
+      return incomeDate >= startDate && incomeDate <= endDate
+    })
+    
+    const filteredExpensesData = bills.filter(expense => {
+      const expenseDate = new Date(expense.date)
+      return expenseDate >= startDate && expenseDate <= endDate
+    })
+    
+    if (filteredIncomesData.length === 0 && filteredExpensesData.length === 0) {
+      processEmptyData()
+    } else {
+      processApiData(filteredIncomesData, filteredExpensesData, selectedPeriod)
+    }
+    
+    setIsLoading(false)
+  }, [selectedPeriod, availablePeriods, incomes, bills, contextLoading])
 
-        if (!incomesResponse.ok || !expensesResponse.ok) {
-          processEmptyData()
-          return
-        }
+  // Function to create time frame options from data
+  const createTimeFramesFromData = (incomes, expenses) => {
+    const allDates = [
+      ...incomes.map(income => new Date(income.date)),
+      ...expenses.map(expense => new Date(expense.date))
+    ]
 
-        const [incomesData, expensesData] = await Promise.all([
-          incomesResponse.json(),
-          expensesResponse.json()
-        ])
-
-        // If "all" is selected, use all data
-        if (selectedPeriod === 'all') {
-          if (incomesData.length === 0 && expensesData.length === 0) {
-            processEmptyData()
-          } else {
-            processApiData(incomesData, expensesData, 'all')
-          }
-          setIsLoading(false)
-          return
-        }
-        
-        // Find the selected time frame
-        const timeFrame = availablePeriods.find(p => p.value === selectedPeriod)
-        
-        if (!timeFrame) {
-          console.error('Período selecionado não encontrado:', selectedPeriod)
-          processEmptyData()
-          setIsLoading(false)
-          return
-        }
-        
-        // Filter data based on the selected time frame
-        const startDate = new Date(timeFrame.startDate)
-        const endDate = new Date(timeFrame.endDate)
-        
-        // Set time to beginning and end of day for accurate comparison
-        startDate.setHours(0, 0, 0, 0)
-        endDate.setHours(23, 59, 59, 999)
-        
-        const filteredIncomesData = incomesData.filter(income => {
-          const incomeDate = new Date(income.date)
-          return incomeDate >= startDate && incomeDate <= endDate
-        })
-        
-        const filteredExpensesData = expensesData.filter(expense => {
-          const expenseDate = new Date(expense.date)
-          return expenseDate >= startDate && expenseDate <= endDate
-        })
-        
-        if (filteredIncomesData.length === 0 && filteredExpensesData.length === 0) {
-          processEmptyData()
-        } else {
-          processApiData(filteredIncomesData, filteredExpensesData, selectedPeriod)
-        }
-      } catch (error) {
-        console.error('Erro ao buscar dados para o período:', error)
-        processEmptyData()
-      } finally {
-        setIsLoading(false)
-      }
+    if (allDates.length === 0) {
+      createDefaultTimeFrames()
+      return
     }
 
-    fetchPeriodData()
-  }, [tenant, selectedPeriod, availablePeriods])
+    // Sort dates to find min and max
+    allDates.sort((a, b) => a - b)
+    const oldestDate = allDates[0]
+    const newestDate = allDates[allDates.length - 1]
+    
+    // Create time frame options
+    const timeFrames = [
+      {
+        label: 'Todo o período',
+        value: 'all',
+        startDate: oldestDate,
+        endDate: new Date() // Use current date as end date
+      }
+    ]
+    
+    // Current month
+    const now = new Date()
+    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+    const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+    const currentMonthName = now.toLocaleString('pt-BR', { month: 'long' })
+    
+    timeFrames.push({
+      label: `${currentMonthName} ${now.getFullYear()}`,
+      value: 'current-month',
+      startDate: currentMonthStart,
+      endDate: currentMonthEnd
+    })
+    
+    // Last 3 months
+    const threeMonthsAgo = new Date(now)
+    threeMonthsAgo.setMonth(now.getMonth() - 3)
+    
+    timeFrames.push({
+      label: 'Últimos 3 meses',
+      value: 'last-3-months',
+      startDate: threeMonthsAgo,
+      endDate: now
+    })
+    
+    // Last 6 months
+    const sixMonthsAgo = new Date(now)
+    sixMonthsAgo.setMonth(now.getMonth() - 6)
+    
+    timeFrames.push({
+      label: 'Últimos 6 meses',
+      value: 'last-6-months',
+      startDate: sixMonthsAgo,
+      endDate: now
+    })
+    
+    // Current year
+    const currentYearStart = new Date(now.getFullYear(), 0, 1)
+    const currentYearEnd = new Date(now.getFullYear(), 11, 31)
+    
+    timeFrames.push({
+      label: `Ano ${now.getFullYear()}`,
+      value: 'current-year',
+      startDate: currentYearStart,
+      endDate: currentYearEnd
+    })
+    
+    // Previous year if we have data from it
+    const previousYearStart = new Date(now.getFullYear() - 1, 0, 1)
+    const previousYearEnd = new Date(now.getFullYear() - 1, 11, 31)
+    
+    // Check if we have data from previous year
+    if (oldestDate < previousYearStart) {
+      timeFrames.push({
+        label: `Ano ${now.getFullYear() - 1}`,
+        value: 'previous-year',
+        startDate: previousYearStart,
+        endDate: previousYearEnd
+      })
+    }
+    
+    setAvailablePeriods(timeFrames)
+  }
+
+  // Function to create default time frames when no data is available
+  const createDefaultTimeFrames = () => {
+    const now = new Date()
+    
+    const timeFrames = [
+      {
+        label: 'Todo o período',
+        value: 'all',
+        startDate: new Date(now.getFullYear() - 1, now.getMonth(), 1),
+        endDate: now
+      },
+      {
+        label: `${now.toLocaleString('pt-BR', { month: 'long' })} ${now.getFullYear()}`,
+        value: 'current-month',
+        startDate: new Date(now.getFullYear(), now.getMonth(), 1),
+        endDate: new Date(now.getFullYear(), now.getMonth() + 1, 0)
+      },
+      {
+        label: 'Últimos 3 meses',
+        value: 'last-3-months',
+        startDate: new Date(now.setMonth(now.getMonth() - 3)),
+        endDate: new Date()
+      },
+      {
+        label: 'Últimos 6 meses',
+        value: 'last-6-months',
+        startDate: new Date(now.setMonth(now.getMonth() - 3)), // -6 total from original date
+        endDate: new Date()
+      },
+      {
+        label: `Ano ${now.getFullYear()}`,
+        value: 'current-year',
+        startDate: new Date(now.getFullYear(), 0, 1),
+        endDate: new Date(now.getFullYear(), 11, 31)
+      }
+    ]
+    
+    setAvailablePeriods(timeFrames)
+    processEmptyData()
+  }
 
   // Função para gerar dados vazios quando não há dados para o período
   const processEmptyData = () => {
