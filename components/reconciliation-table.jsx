@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useParams } from "next/navigation"
+import { useFinance } from "@/app/contexts/FinanceContext"
 import { 
   Card, CardHeader, CardTitle, CardContent, CardDescription 
 } from "./ui/card"
@@ -14,7 +15,6 @@ import { Badge } from "./ui/badge"
 
 export function ReconciliationTable() {
   const [reconciliations, setReconciliations] = useState([])
-  const [isLoading, setIsLoading] = useState(true)
   const [editingId, setEditingId] = useState(null)
   const [editValue, setEditValue] = useState('')
   const [doctorEmailMap, setDoctorEmailMap] = useState({})
@@ -30,85 +30,62 @@ export function ReconciliationTable() {
     taxBase: 0
   })
   const { tenant } = useParams()
+  const { incomes, doctors, isLoading } = useFinance()
 
   useEffect(() => {
-    fetchData()
-  }, [tenant])
+    if (!incomes || !doctors) return
 
-  const fetchData = async () => {
-    try {
-      setIsLoading(true)
-      
-      // Primeiro, buscar os dados dos médicos para obter o mapeamento de ID para email
-      const doctorsResponse = await fetch(`/api/${tenant}/users?role=doctor`)
-      if (!doctorsResponse.ok) {
-        throw new Error('Failed to fetch doctors data')
-      }
-      const doctorsData = await doctorsResponse.json()
-      
-      // Criar mapeamento de ID para email
-      const emailMap = doctorsData.reduce((map, doctor) => {
-        map[doctor._id] = doctor.email
-        return map
-      }, {})
-      
-      setDoctorEmailMap(emailMap)
-      
-      // Buscar dados de receitas
-      const incomesResponse = await fetch(`/api/${tenant}/income`)
-      if (!incomesResponse.ok) {
-        throw new Error('Failed to fetch income data')
-      }
-      const incomesData = await incomesResponse.json()
+    // Criar mapeamento de ID para email
+    const emailMap = doctors.reduce((map, doctor) => {
+      map[doctor._id] = doctor.email
+      return map
+    }, {})
+    
+    setDoctorEmailMap(emailMap)
 
-      // Processa apenas as receitas com seus valores conciliados
-      const allTransactions = incomesData.map(income => {
-        // Define o status de conciliação baseado nos valores
-        let status = 'Não conciliado'
-        
-        if (income.valorConciliado && income.valorConciliado > 0) {
-          if (income.valorConciliado === income.amount) {
-            status = 'Conciliado'
-          } else if (income.paymentType === 'PJ') {
-            status = 'Pendente: PJ maior'
-          } else if (income.paymentType === 'PF') {
-            status = 'Pendente: PF maior'
-          }
-        } else {
-          status = income.statusConciliacao || 'Não conciliado'
+    // Processa apenas as receitas com seus valores conciliados
+    const allTransactions = incomes.map(income => {
+      // Define o status de conciliação baseado nos valores
+      let status = 'Não conciliado'
+      
+      if (income.valorConciliado && income.valorConciliado > 0) {
+        if (income.valorConciliado === income.amount) {
+          status = 'Conciliado'
+        } else if (income.paymentType === 'PJ') {
+          status = 'Pendente: PJ maior'
+        } else if (income.paymentType === 'PF') {
+          status = 'Pendente: PF maior'
         }
-        
-        // Buscar o email do médico pelo ID, se disponível
-        const doctorEmail = emailMap[income.name] || income.name
-        
-        return {
-          id: income._id,
-          date: income.date,
-          description: doctorEmail ? `Consulta: ${doctorEmail}` : 'Receita',
-          doctorId: income.name,
-          category: income.category || 'Receita',
-          pfValue: income.paymentType === 'PF' ? income.amount : income.valorConciliado || 0,
-          pjValue: income.paymentType === 'PJ' ? income.amount : income.valorConciliado || 0,
-          paymentType: income.paymentType,
-          valorConciliado: income.valorConciliado || 0,
-          status: status,
-          amount: income.amount
-        }
-      })
+      } else {
+        status = income.statusConciliacao || 'Não conciliado'
+      }
+      
+      // Buscar o email do médico pelo ID, se disponível
+      const doctorEmail = emailMap[income.name] || income.name
+      
+      return {
+        id: income._id,
+        date: income.date,
+        description: doctorEmail ? `Consulta: ${doctorEmail}` : 'Receita',
+        doctorId: income.name,
+        category: income.category || 'Receita',
+        pfValue: income.paymentType === 'PF' ? income.amount : income.valorConciliado || 0,
+        pjValue: income.paymentType === 'PJ' ? income.amount : income.valorConciliado || 0,
+        paymentType: income.paymentType,
+        valorConciliado: income.valorConciliado || 0,
+        status: status,
+        amount: income.amount
+      }
+    })
 
-      // Ordena por data (mais recentes primeiro)
-      const sortedTransactions = allTransactions.sort((a, b) => 
-        new Date(b.date) - new Date(a.date)
-      )
+    // Ordena por data (mais recentes primeiro)
+    const sortedTransactions = allTransactions.sort((a, b) => 
+      new Date(b.date) - new Date(a.date)
+    )
 
-      setReconciliations(sortedTransactions)
-      calculateSummary(incomesData)
-    } catch (error) {
-      console.error('Erro ao buscar dados:', error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
+    setReconciliations(sortedTransactions)
+    calculateSummary(incomes)
+  }, [incomes, doctors])
 
   const calculateSummary = (incomesData) => {
     // Calcula receitas PF (valores originais + valores conciliados de PJ)
@@ -225,7 +202,17 @@ export function ReconciliationTable() {
       )
 
       // Atualiza o resumo após edição
-      fetchData()
+      const updatedIncomes = incomes.map(income => {
+        if (income._id === item.id) {
+          return {
+            ...income,
+            valorConciliado: value,
+            statusConciliacao: calculateStatus(income.paymentType, income.amount, value)
+          }
+        }
+        return income
+      })
+      calculateSummary(updatedIncomes)
       
       setEditingId(null)
       setEditValue('')

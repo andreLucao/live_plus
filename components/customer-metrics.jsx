@@ -10,20 +10,17 @@ import {
   Tooltip, XAxis, YAxis, CartesianGrid, Legend, LineChart, Line
 } from "recharts"
 import { Download, BarChart3, CalendarIcon } from "lucide-react"
+import { useFinance } from "@/app/contexts/FinanceContext"
 
 export function CustomerMetrics() {
   const [metrics, setMetrics] = useState([])
-  const [isLoading, setIsLoading] = useState(true)
   const [doctorRevenueData, setDoctorRevenueData] = useState([])
   const [doctorAppointmentsData, setDoctorAppointmentsData] = useState([])
   const [selectedDoctorData, setSelectedDoctorData] = useState(null)
   const [showModal, setShowModal] = useState(false)
   const [clientMetricsData, setClientMetricsData] = useState([])
   const [selectedDoctor, setSelectedDoctor] = useState(null)
-  const [appointments, setAppointments] = useState([])
-  const [professionals, setProfessionals] = useState([])
-  const [incomes, setIncomes] = useState([])
-  const { tenant } = useParams()
+  const { incomes, bills, appointments, doctors, patients, users, isLoading } = useFinance()
 
   // Definir esquemas de cores para os gráficos
   const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8", "#82ca9d"]
@@ -44,351 +41,186 @@ export function CustomerMetrics() {
     return new Intl.NumberFormat('pt-BR').format(value)
   }
 
-  // Fetch dos médicos (profissionais)
-  const fetchProfessionals = async () => {
-    try {
-      const response = await fetch(`/api/${tenant}/users?role=doctor`)
-      if (!response.ok) throw new Error('Failed to fetch professionals')
-      const data = await response.json()
-      console.log('Professionals loaded:', data)
-      const professionalsList = data.filter(user => user.role === "doctor")
-      setProfessionals(professionalsList)
-      return professionalsList
-    } catch (error) {
-      console.error("Error loading professionals:", error)
-      return []
-    }
-  }
-
-  // Fetch dos agendamentos
-  const fetchAppointments = async () => {
-    try {
-      setIsLoading(true)
-      let url = `/api/${tenant}/appointments`
-      const response = await fetch(url)
-      if (!response.ok) throw new Error('Failed to fetch appointments')
-      const data = await response.json()
-      console.log('Appointments loaded:', data)
-      setAppointments(data)
-      return data
-    } catch (error) {
-      console.error("Error loading appointments:", error)
-      return []
-    }
-  }
-
-  // Fetch das receitas
-  const fetchIncomes = async () => {
-    try {
-      const response = await fetch(`/api/${tenant}/income`)
-      if (!response.ok) throw new Error('Failed to fetch incomes')
-      const data = await response.json()
-      console.log('Incomes loaded:', data)
-      setIncomes(data)
-      return data
-    } catch (error) {
-      console.error("Error loading incomes:", error)
-      return []
-    }
-  }
-
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Busca profissionais, agendamentos e receitas
-        const professionalsList = await fetchProfessionals()
-        const appointmentsData = await fetchAppointments()
-        const incomesData = await fetchIncomes()
-        
-        // Busca dados adicionais de clientes, transações, etc.
-        console.log('Fetching data for tenant:', tenant)
-        
-        // Fetch all doctors data to get email by ID
-        const doctorsResponse = await fetch(`/api/${tenant}/users?role=doctor`)
-        const doctorsData = await doctorsResponse.json()
-        
-        // Create a map of doctor IDs to their emails for easy lookup
-        const doctorEmailMap = doctorsData.reduce((map, doctor) => {
-          map[doctor._id] = doctor.email
-          return map
-        }, {})
-        
-        const [clientsResponse, usersResponse, proceduresResponse] = await Promise.all([
-          fetch(`/api/${tenant}/patients`),
-          fetch(`/api/${tenant}/users?role=user`),
-          fetch(`/api/${tenant}/procedures`)
-        ])
+    if (!incomes || !bills || !appointments || !doctors || !patients || !users) return;
 
-        if (!clientsResponse.ok || !usersResponse.ok || !proceduresResponse.ok) {
-          console.error('API response not OK:', {
-            clients: clientsResponse.status,
-            users: usersResponse.status,
-            procedures: proceduresResponse.status
-          })
-          throw new Error('Failed to fetch data')
-        }
+    // Create a map of doctor IDs to their emails for easy lookup
+    const doctorEmailMap = doctors.reduce((map, doctor) => {
+      map[doctor._id] = doctor.email
+      return map
+    }, {})
 
-        const [clientsData, usersData, proceduresData] = await Promise.all([
-          clientsResponse.json(),
-          usersResponse.json(),
-          proceduresResponse.json()
-        ])
+    const today = new Date()
+    const currentMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+    const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1)
+    const twoMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 2, 1)
+    const thirtyDaysAgo = new Date(today)
+    thirtyDaysAgo.setDate(today.getDate() - 30)
 
-        console.log('API Data received:', {
-          clients: clientsData.length,
-          incomes: incomesData.length,
-          appointments: appointmentsData.length,
-          users: usersData.length,
-          procedures: proceduresData.length
+    // Calculate active clients
+    const activeClients = new Set(
+      incomes
+        .filter(income => new Date(income.date) >= twoMonthsAgo)
+        .map(income => income.patientName)
+    ).size
+
+    const lastMonthActiveClients = new Set(
+      incomes
+        .filter(income => {
+          const date = new Date(income.date)
+          return date >= twoMonthsAgo && date < lastMonth
         })
-        
-        // Log sample data to verify structure
-        if (incomesData.length > 0) console.log('Sample income:', incomesData[0])
-        if (professionalsList.length > 0) console.log('Sample professional:', professionalsList[0])
-        if (appointmentsData.length > 0) console.log('Sample appointment:', appointmentsData[0])
-        if (proceduresData.length > 0) console.log('Sample procedure:', proceduresData[0])
-        
-        const today = new Date()
-        const currentMonth = new Date(today.getFullYear(), today.getMonth(), 1)
-        const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1)
-        const twoMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 2, 1)
+        .map(income => income.patientName)
+    ).size
 
-        // Calcula clientes ativos (que tiveram transação nos últimos 2 meses)
-        const activeClients = new Set(
-          incomesData
-            .filter(income => new Date(income.date) >= twoMonthsAgo)
-            .map(income => income.patientName)
-        ).size
+    // Calculate average ticket
+    const currentMonthTransactions = incomes.filter(
+      income => new Date(income.date) >= lastMonth
+    )
+    
+    const ticketMedio = currentMonthTransactions.length > 0
+      ? currentMonthTransactions.reduce((sum, income) => sum + income.amount, 0) / currentMonthTransactions.length
+      : 0
 
-        // Calcula clientes ativos do mês passado para comparação
-        const lastMonthActiveClients = new Set(
-          incomesData
-            .filter(income => {
-              const date = new Date(income.date)
-              return date >= twoMonthsAgo && date < lastMonth
-            })
-            .map(income => income.patientName)
-        ).size
-
-        // Calcula ticket médio
-        const currentMonthTransactions = incomesData.filter(
-          income => new Date(income.date) >= lastMonth
-        )
-        
-        const ticketMedio = currentMonthTransactions.length > 0
-          ? currentMonthTransactions.reduce((sum, income) => sum + income.amount, 0) / currentMonthTransactions.length
-          : 0
-
-        const lastMonthTransactions = incomesData.filter(
-          income => {
-            const date = new Date(income.date)
-            return date >= twoMonthsAgo && date < lastMonth
-          }
-        )
-
-        const lastMonthTicketMedio = lastMonthTransactions.length > 0
-          ? lastMonthTransactions.reduce((sum, income) => sum + income.amount, 0) / lastMonthTransactions.length
-          : 0
-
-        // Calcula taxa de retenção
-        const currentMonthClients = new Set(currentMonthTransactions.map(t => t.patientName))
-        const lastMonthClients = new Set(lastMonthTransactions.map(t => t.patientName))
-        const retainedClients = [...currentMonthClients].filter(id => lastMonthClients.has(id)).length
-        const retentionRate = lastMonthClients.size > 0
-          ? (retainedClients / lastMonthClients.size) * 100
-          : 0
-
-        const lastRetentionRate = 0 // Você precisará implementar a lógica para o período anterior
-
-        // Calcula NPS (se disponível nos dados do cliente)
-        const npsScores = clientsData
-          .filter(client => client.nps && new Date(client.npsDate) >= lastMonth)
-          .map(client => client.nps)
-        
-        const nps = npsScores.length > 0
-          ? Math.round(npsScores.reduce((sum, score) => sum + score, 0) / npsScores.length)
-          : 0
-
-        const lastNps = 0 // Você precisará implementar a lógica para o período anterior
-
-        setMetrics([
-          {
-            label: "Clientes Ativos",
-            value: activeClients,
-            change: `${calculateChange(activeClients, lastMonthActiveClients)}%`
-          },
-          {
-            label: "Ticket Médio",
-            value: `R$ ${ticketMedio.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-            change: `${calculateChange(ticketMedio, lastMonthTicketMedio)}%`
-          },
-          {
-            label: "Taxa de Retenção",
-            value: `${retentionRate.toFixed(1)}%`,
-            change: `${calculateChange(retentionRate, lastRetentionRate)}%`
-          },
-          {
-            label: "NPS",
-            value: nps,
-            change: `${calculateChange(nps, lastNps)}%`
-          }
-        ])
-
-        // Atualiza dados de profissionais no carregamento inicial
-        updateProfessionalData(incomesData, appointmentsData, doctorEmailMap);
-
-        // Calcular métricas de clientes para o novo gráfico
-        // Novos clientes (usuários com role="user" criados nos últimos 30 dias)
-        const thirtyDaysAgo = new Date(today);
-        thirtyDaysAgo.setDate(today.getDate() - 30);
-        
-        const newClients = usersData.filter(user => 
-          user.role === "user" && new Date(user.createdAt) >= thirtyDaysAgo
-        ).length;
-
-        // Clientes recorrentes (usuários com role="user" com último login mais de 30 dias após a criação)
-        const recurringClients = usersData.filter(user => {
-          if (user.role !== "user") return false;
-          
-          const creationDate = new Date(user.createdAt);
-          const lastLoginDate = user.lastLogin ? new Date(user.lastLogin) : null;
-          
-          // Se não tiver data de último login, não é recorrente
-          if (!lastLoginDate) return false;
-          
-          // Calcula a diferença em dias entre a criação e o último login
-          const diffTime = Math.abs(lastLoginDate - creationDate);
-          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-          
-          // É recorrente se o último login for mais de 30 dias após a criação
-          return diffDays > 30;
-        }).length;
-
-        console.log('Client metrics calculated:', {
-          newClients,
-          recurringClients,
-          retentionRate: Math.round(retentionRate)
-        });
-
-        // Dados para o gráfico de métricas de clientes
-        const clientMetricsDataArray = [
-          {
-            name: "Novos Clientes",
-            value: newClients,
-            color: CLIENT_METRICS_COLORS[0]
-          },
-          {
-            name: "Clientes Recorrentes",
-            value: recurringClients,
-            color: CLIENT_METRICS_COLORS[1]
-          },
-          {
-            name: "Taxa de Retenção",
-            value: Math.round(retentionRate),
-            color: CLIENT_METRICS_COLORS[2]
-          }
-        ];
-
-        console.log('Setting client metrics data:', clientMetricsDataArray);
-        setClientMetricsData(clientMetricsDataArray);
-
-      } catch (error) {
-        console.error('Erro ao buscar dados:', error);
-      } finally {
-        setIsLoading(false);
+    const lastMonthTransactions = incomes.filter(
+      income => {
+        const date = new Date(income.date)
+        return date >= twoMonthsAgo && date < lastMonth
       }
-    };
+    )
 
-    fetchData();
-  }, [tenant]);
+    const lastMonthTicketMedio = lastMonthTransactions.length > 0
+      ? lastMonthTransactions.reduce((sum, income) => sum + income.amount, 0) / lastMonthTransactions.length
+      : 0
 
-  // Função para calcular e atualizar métricas dos profissionais
-  const updateProfessionalData = (incomesData, appointmentsData, doctorEmailMap = {}) => {
-    // Extrair nomes de médicos únicos de receitas (usando name)
-    const uniqueDoctorIdsFromIncomes = [...new Set(incomesData.map(income => income.name))].filter(Boolean);
-    
-    // Extrair nomes de profissionais únicos de agendamentos (usando professional)
-    const uniqueProfessionalIdsFromAppointments = [...new Set(appointmentsData.map(appt => appt.professional))].filter(Boolean);
-    
-    // Combinar as duas listas de profissionais
-    const uniqueDoctorIds = [...new Set([...uniqueDoctorIdsFromIncomes, ...uniqueProfessionalIdsFromAppointments])].filter(Boolean);
-    
-    console.log('Unique doctor IDs:', uniqueDoctorIds);
+    // Calculate retention rate
+    const currentMonthClients = new Set(currentMonthTransactions.map(t => t.patientName))
+    const lastMonthClients = new Set(lastMonthTransactions.map(t => t.patientName))
+    const retainedClients = [...currentMonthClients].filter(id => lastMonthClients.has(id)).length
+    const retentionRate = lastMonthClients.size > 0
+      ? (retainedClients / lastMonthClients.size) * 100
+      : 0
 
-    // Processar dados para métricas por médico
-    const professionalRevenues = uniqueDoctorIds.map(doctorId => {
-      // Get doctor email from map or use ID if not found
-      const doctorEmail = doctorEmailMap[doctorId] || doctorId;
+    // Calculate NPS
+    const npsScores = patients
+      .filter(patient => patient.nps && new Date(patient.npsDate) >= lastMonth)
+      .map(patient => patient.nps)
+    
+    const nps = npsScores.length > 0
+      ? Math.round(npsScores.reduce((sum, score) => sum + score, 0) / npsScores.length)
+      : 0
+
+    setMetrics([
+      {
+        label: "Clientes Ativos",
+        value: activeClients,
+        change: `${calculateChange(activeClients, lastMonthActiveClients)}%`
+      },
+      {
+        label: "Ticket Médio",
+        value: `R$ ${ticketMedio.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+        change: `${calculateChange(ticketMedio, lastMonthTicketMedio)}%`
+      },
+      {
+        label: "Taxa de Retenção",
+        value: `${retentionRate.toFixed(1)}%`,
+        change: `${calculateChange(retentionRate, 0)}%`
+      },
+      {
+        label: "NPS",
+        value: nps,
+        change: `${calculateChange(nps, 0)}%`
+      }
+    ])
+
+    // Update professional data
+    updateProfessionalData(doctorEmailMap)
+
+    // Calculate client metrics
+    const newClients = users.filter(user => 
+      user.role === "user" && new Date(user.createdAt) >= thirtyDaysAgo
+    ).length
+
+    const recurringClients = users.filter(user => {
+      if (user.role !== "user") return false
       
-      // Filtrar transações associadas a este médico usando o campo name
-      const doctorIncomes = incomesData.filter(income => 
-        income.name === doctorId
-      );
+      const creationDate = new Date(user.createdAt)
+      const lastLoginDate = user.lastLogin ? new Date(user.lastLogin) : null
       
-      console.log(`Doctor ${doctorEmail} has ${doctorIncomes.length} incomes`);
+      if (!lastLoginDate) return false
       
-      // Calcular receita total
-      const totalRevenue = doctorIncomes.reduce((sum, income) => sum + income.amount, 0);
+      const diffTime = Math.abs(lastLoginDate - creationDate)
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
       
-      // Contar pacientes únicos
-      const uniquePatients = new Set(doctorIncomes.map(income => income.patientName)).size;
-      
-      // Calcular ticket médio para este médico
-      const avgTicket = doctorIncomes.length > 0 ? totalRevenue / doctorIncomes.length : 0;
-      
+      return diffDays > 30
+    }).length
+
+    setClientMetricsData([
+      {
+        name: "Novos Clientes",
+        value: newClients,
+        color: CLIENT_METRICS_COLORS[0]
+      },
+      {
+        name: "Clientes Recorrentes",
+        value: recurringClients,
+        color: CLIENT_METRICS_COLORS[1]
+      },
+      {
+        name: "Taxa de Retenção",
+        value: Math.round(retentionRate),
+        color: CLIENT_METRICS_COLORS[2]
+      }
+    ])
+  }, [incomes, bills, appointments, doctors, patients, users])
+
+  const updateProfessionalData = (doctorEmailMap) => {
+    // Process doctor revenue data
+    const professionalRevenues = doctors.map(doctor => {
+      const doctorIncomes = incomes.filter(income => income.name === doctor._id)
+      const totalRevenue = doctorIncomes.reduce((sum, income) => sum + income.amount, 0)
+      const uniquePatients = new Set(doctorIncomes.map(income => income.patientName)).size
+      const avgTicket = doctorIncomes.length > 0 ? totalRevenue / doctorIncomes.length : 0
+
       return {
-        id: doctorId,
-        name: doctorEmail,
+        id: doctor._id,
+        name: doctor.email,
         revenue: totalRevenue,
         patients: uniquePatients,
         averageTicket: avgTicket,
         transactionCount: doctorIncomes.length
-      };
-    }).sort((a, b) => b.revenue - a.revenue); // Ordenar por receita, do maior para o menor
+      }
+    }).sort((a, b) => b.revenue - a.revenue)
 
-    console.log('Professional revenues calculated:', professionalRevenues);
-    setDoctorRevenueData(professionalRevenues);
+    setDoctorRevenueData(professionalRevenues)
 
-    // Processar dados de agendamentos por profissional
-    const professionalAppointments = uniqueDoctorIds.map(doctorId => {
-      // Get doctor email from map or use ID if not found
-      const doctorEmail = doctorEmailMap[doctorId] || doctorId;
+    // Process doctor appointments data
+    const professionalAppointments = doctors.map(doctor => {
+      const doctorAppts = appointments.filter(appt => appt.professional === doctor._id)
       
-      // Filtrar agendamentos deste profissional usando o campo professional
-      const doctorAppts = appointmentsData.filter(appt => 
-        appt.professional === doctorId
-      );
+      const pendingAppointments = doctorAppts.filter(appt => appt.status === 'Pending').length
+      const confirmedAppointments = doctorAppts.filter(appt => appt.status === 'Confirmed').length
+      const canceledAppointments = doctorAppts.filter(appt => appt.status === 'Canceled').length
       
-      console.log(`Doctor ${doctorEmail} has ${doctorAppts.length} appointments`);
-      
-      // Contar agendamentos por status
-      const pendingAppointments = doctorAppts.filter(appt => appt.status === 'Pending').length;
-      const confirmedAppointments = doctorAppts.filter(appt => appt.status === 'Confirmed').length;
-      const canceledAppointments = doctorAppts.filter(appt => appt.status === 'Canceled').length;
-      
-      // Por tipo de serviço (usando o campo service)
       const consultations = doctorAppts.filter(appt => 
-        appt.service?.includes('Consulta') || appt.service?.includes('consulta')
-      ).length;
+        appt.service?.toLowerCase().includes('consulta')
+      ).length
       
       const procedures = doctorAppts.filter(appt => 
-        appt.service?.includes('Procedimento') || 
-        appt.service?.includes('Exame') || 
-        appt.service?.includes('procedimento') || 
-        appt.service?.includes('exame')
-      ).length;
+        appt.service?.toLowerCase().includes('procedimento') || 
+        appt.service?.toLowerCase().includes('exame')
+      ).length
       
-      const otherServices = doctorAppts.length - consultations - procedures;
+      const otherServices = doctorAppts.length - consultations - procedures
       
-      // Encontrar a receita correspondente para este médico
-      const revenueData = professionalRevenues.find(doc => doc.id === doctorId) || {
+      const revenueData = professionalRevenues.find(doc => doc.id === doctor._id) || {
         revenue: 0,
         patients: 0
-      };
+      }
       
       return {
-        id: doctorId,
-        name: doctorEmail,
+        id: doctor._id,
+        name: doctor.email,
         consultations,
         procedures,
         otherServices,
@@ -398,18 +230,17 @@ export function CustomerMetrics() {
         total: doctorAppts.length,
         revenue: revenueData.revenue,
         patients: revenueData.patients
-      };
-    }).sort((a, b) => b.total - a.total); // Ordenar por total de atendimentos, do maior para o menor
+      }
+    }).sort((a, b) => b.total - a.total)
 
-    console.log('Professional appointments calculated:', professionalAppointments);
-    setDoctorAppointmentsData(professionalAppointments);
-  };
+    setDoctorAppointmentsData(professionalAppointments)
+  }
 
   const calculateChange = (current, previous) => {
-    if (!previous) return "+0";
-    const change = ((current - previous) / previous) * 100;
-    return change >= 0 ? `+${change.toFixed(1)}` : change.toFixed(1);
-  };
+    if (!previous) return "+0"
+    const change = ((current - previous) / previous) * 100
+    return change >= 0 ? `+${change.toFixed(1)}` : change.toFixed(1)
+  }
 
   // Função para abrir modal com detalhes do médico
   const handleDoctorClick = (doctor) => {

@@ -1,63 +1,40 @@
 "use client"
 
 import { useState, useEffect } from 'react'
-import { useParams } from "next/navigation"
+import { useFinance } from "@/app/contexts/FinanceContext"
 
 export function RecentTransactions() {
   const [transactions, setTransactions] = useState([])
-  const [isLoading, setIsLoading] = useState(true)
-  const { tenant } = useParams()
+  const { incomes, bills, isLoading } = useFinance()
 
   useEffect(() => {
-    const fetchTransactions = async () => {
-      try {
-        const [incomesResponse, expensesResponse] = await Promise.all([
-          fetch(`/api/${tenant}/income`),
-          fetch(`/api/${tenant}/bills`)
-        ])
+    if (incomes && bills) {
+      // Formata receitas
+      const formattedIncomes = incomes.map(income => ({
+        id: income._id,
+        description: income.description || 'Receita',
+        amount: income.amount,
+        type: 'income',
+        date: income.date
+      }))
 
-        if (!incomesResponse.ok || !expensesResponse.ok) {
-          throw new Error('Failed to fetch transactions')
-        }
+      // Formata despesas
+      const formattedExpenses = bills.map(expense => ({
+        id: expense._id,
+        description: expense.description || 'Despesa',
+        amount: -expense.amount, // Valor negativo para despesas
+        type: 'expense',
+        date: expense.date
+      }))
 
-        const [incomesData, expensesData] = await Promise.all([
-          incomesResponse.json(),
-          expensesResponse.json()
-        ])
+      // Combina e ordena por data (mais recentes primeiro)
+      const allTransactions = [...formattedIncomes, ...formattedExpenses]
+        .sort((a, b) => new Date(b.date) - new Date(a.date))
+        .slice(0, 4) // Pega apenas as 4 transações mais recentes
 
-        // Formata receitas
-        const formattedIncomes = incomesData.map(income => ({
-          id: income._id,
-          description: income.description || 'Receita',
-          amount: income.amount,
-          type: 'income',
-          date: income.date
-        }))
-
-        // Formata despesas
-        const formattedExpenses = expensesData.map(expense => ({
-          id: expense._id,
-          description: expense.description || 'Despesa',
-          amount: -expense.amount, // Valor negativo para despesas
-          type: 'expense',
-          date: expense.date
-        }))
-
-        // Combina e ordena por data (mais recentes primeiro)
-        const allTransactions = [...formattedIncomes, ...formattedExpenses]
-          .sort((a, b) => new Date(b.date) - new Date(a.date))
-          .slice(0, 4) // Pega apenas as 4 transações mais recentes
-
-        setTransactions(allTransactions)
-      } catch (error) {
-        console.error('Erro ao buscar transações:', error)
-      } finally {
-        setIsLoading(false)
-      }
+      setTransactions(allTransactions)
     }
-
-    fetchTransactions()
-  }, [tenant])
+  }, [incomes, bills])
 
   if (isLoading) {
     return (

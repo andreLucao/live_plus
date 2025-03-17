@@ -13,76 +13,51 @@ import { CashFlow } from "@/components/cash-flow"
 import { CalendarDays, AlertCircle, TrendingUp, TrendingDown, ShieldAlert } from "lucide-react"
 import Sidebar from "@/components/Sidebar"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { FinanceProvider, useFinance } from "@/app/contexts/FinanceContext"
 
-// Dashboard component (unchanged)
+// Dashboard component
 function FinancialDashboard() {
-  const [incomes, setIncomes] = useState([])
-  const [bills, setBills] = useState([])
   const [lastMonthIncome, setLastMonthIncome] = useState(0)
   const [lastMonthExpenses, setLastMonthExpenses] = useState(0)
   const [lastMonthProfit, setLastMonthProfit] = useState(0)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState("")
-  const { tenant } = useParams()
+  const { incomes, bills, isLoading, error, fetchAllData } = useFinance()
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [incomesResponse, billsResponse] = await Promise.all([
-          fetch(`/api/${tenant}/income`),
-          fetch(`/api/${tenant}/bills`)
-        ])
+    fetchAllData()
+  }, [])
 
-        if (!incomesResponse.ok || !billsResponse.ok) {
-          throw new Error('Failed to fetch data')
-        }
+  useEffect(() => {
+    if (incomes && bills) {
+      // Ordena os dados por data
+      const sortedIncomes = [...incomes].sort((a, b) => new Date(b.date) - new Date(a.date))
+      const sortedBills = [...bills].sort((a, b) => new Date(b.date) - new Date(a.date))
 
-        const [incomesData, billsData] = await Promise.all([
-          incomesResponse.json(),
-          billsResponse.json()
-        ])
+      // Agrupa por mês
+      const incomesByMonth = groupByMonth(sortedIncomes)
+      const expensesByMonth = groupByMonth(sortedBills)
 
-        // Ordena os dados por data
-        const sortedIncomes = incomesData.sort((a, b) => new Date(b.date) - new Date(a.date))
-        const sortedBills = billsData.sort((a, b) => new Date(b.date) - new Date(a.date))
+      // Pega os meses únicos ordenados
+      const months = [...new Set([...Object.keys(incomesByMonth), ...Object.keys(expensesByMonth)])].sort().reverse()
 
-        // Agrupa por mês
-        const incomesByMonth = groupByMonth(sortedIncomes)
-        const expensesByMonth = groupByMonth(sortedBills)
+      // Se houver pelo menos dois meses de dados
+      if (months.length >= 2) {
+        const currentMonth = months[0]
+        const previousMonth = months[1]
 
-        // Pega os meses únicos ordenados
-        const months = [...new Set([...Object.keys(incomesByMonth), ...Object.keys(expensesByMonth)])].sort().reverse()
-
-        // Se houver pelo menos dois meses de dados
-        if (months.length >= 2) {
-          const currentMonth = months[0]
-          const previousMonth = months[1]
-
-          // Calcula totais do mês anterior
-          setLastMonthIncome(
-            (incomesByMonth[previousMonth] || []).reduce((sum, income) => sum + income.amount, 0)
-          )
-          setLastMonthExpenses(
-            (expensesByMonth[previousMonth] || []).reduce((sum, bill) => sum + bill.amount, 0)
-          )
-          setLastMonthProfit(
-            (incomesByMonth[previousMonth] || []).reduce((sum, income) => sum + income.amount, 0) -
-            (expensesByMonth[previousMonth] || []).reduce((sum, bill) => sum + bill.amount, 0)
-          )
-        }
-
-        setIncomes(sortedIncomes)
-        setBills(sortedBills)
-        setError("")
-      } catch (error) {
-        setError("Falha ao carregar dados do dashboard. Por favor, tente novamente mais tarde.")
-      } finally {
-        setIsLoading(false)
+        // Calcula totais do mês anterior
+        setLastMonthIncome(
+          (incomesByMonth[previousMonth] || []).reduce((sum, income) => sum + income.amount, 0)
+        )
+        setLastMonthExpenses(
+          (expensesByMonth[previousMonth] || []).reduce((sum, bill) => sum + bill.amount, 0)
+        )
+        setLastMonthProfit(
+          (incomesByMonth[previousMonth] || []).reduce((sum, income) => sum + income.amount, 0) -
+          (expensesByMonth[previousMonth] || []).reduce((sum, bill) => sum + bill.amount, 0)
+        )
       }
     }
-
-    fetchData()
-  }, [tenant])
+  }, [incomes, bills])
 
   // Função auxiliar para agrupar dados por mês
   const groupByMonth = (data) => {
@@ -355,8 +330,12 @@ function RoleProtectedDashboard() {
     )
   }
 
-  // If role is owner, render the dashboard
-  return <FinancialDashboard />
+  // If role is owner or admin, render the dashboard wrapped in FinanceProvider
+  return (
+    <FinanceProvider tenant={tenant}>
+      <FinancialDashboard />
+    </FinanceProvider>
+  )
 }
 
 // Export the protected dashboard as default

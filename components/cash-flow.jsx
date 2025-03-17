@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from 'react'
-import { useParams } from "next/navigation"
+import { useFinance } from "@/app/contexts/FinanceContext"
 import { 
   BarChart, 
   Bar, 
@@ -37,193 +37,169 @@ export function CashFlow() {
     saldoFinal: 0,
     saldoFinalPercentage: 0
   })
-  const [isLoading, setIsLoading] = useState(true)
   const [categoryData, setCategoryData] = useState({
     receitas: [],
     despesas: []
   })
-  const { tenant } = useParams()
+  const { incomes, bills, isLoading } = useFinance()
 
   const COLORS = ['#22c55e', '#ef4444', '#f59e0b', '#3b82f6', '#8b5cf6']
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [incomesResponse, expensesResponse] = await Promise.all([
-          fetch(`/api/${tenant}/income`),
-          fetch(`/api/${tenant}/bills`)
-        ])
-
-        if (!incomesResponse.ok || !expensesResponse.ok) {
-          throw new Error('Failed to fetch data')
-        }
-
-        const [incomesData, expensesData] = await Promise.all([
-          incomesResponse.json(),
-          expensesResponse.json()
-        ])
-
-        // Agrupa dados por mês
-        const monthlyData = {}
-        const today = new Date()
-        const currentMonth = today.getMonth()
-        const previousMonth = currentMonth === 0 ? 11 : currentMonth - 1
-        const currentYear = today.getFullYear()
-        const previousYear = currentMonth === 0 ? currentYear - 1 : currentYear
+    if (incomes && bills) {
+      // Agrupa dados por mês
+      const monthlyData = {}
+      const today = new Date()
+      const currentMonth = today.getMonth()
+      const previousMonth = currentMonth === 0 ? 11 : currentMonth - 1
+      const currentYear = today.getFullYear()
+      const previousYear = currentMonth === 0 ? currentYear - 1 : currentYear
+      
+      // Processa receitas
+      incomes.forEach(income => {
+        const date = new Date(income.date)
+        const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
         
-        // Processa receitas
-        incomesData.forEach(income => {
+        if (!monthlyData[monthYear]) {
+          monthlyData[monthYear] = {
+            month: date.toLocaleString('pt-BR', { month: 'short' }),
+            monthYear,
+            inflow: 0,
+            outflow: 0
+          }
+        }
+        
+        monthlyData[monthYear].inflow += income.amount
+      })
+
+      // Processa despesas
+      bills.forEach(expense => {
+        const date = new Date(expense.date)
+        const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+        
+        if (!monthlyData[monthYear]) {
+          monthlyData[monthYear] = {
+            month: date.toLocaleString('pt-BR', { month: 'short' }),
+            monthYear,
+            inflow: 0,
+            outflow: 0
+          }
+        }
+        
+        monthlyData[monthYear].outflow += expense.amount
+      })
+
+      // Converte para array e ordena por data
+      const sortedData = Object.values(monthlyData)
+        .sort((a, b) => {
+          const [aYear, aMonth] = a.monthYear.split('-').map(Number)
+          const [bYear, bMonth] = b.monthYear.split('-').map(Number)
+          return aYear === bYear ? aMonth - bMonth : aYear - bYear
+        })
+        .slice(-6) // Últimos 6 meses
+        .map(item => ({
+          ...item,
+          inflow: Number(item.inflow.toFixed(2)),
+          outflow: -Number(item.outflow.toFixed(2)), // Valor negativo para visualização
+          balance: Number((item.inflow - item.outflow).toFixed(2))
+        }))
+
+      setData(sortedData)
+
+      // Current month and previous month for percentage calculations
+      const currentMonthData = sortedData.find(item => {
+        const [year, month] = item.monthYear.split('-').map(Number)
+        return year === currentYear && month === currentMonth + 1
+      }) || { inflow: 0, outflow: 0, balance: 0 }
+
+      const previousMonthData = sortedData.find(item => {
+        const [year, month] = item.monthYear.split('-').map(Number)
+        return year === previousYear && month === previousMonth + 1
+      }) || { inflow: 0, outflow: 0, balance: 0 }
+
+      // Calcula métricas
+      const currentMonthYearStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`
+
+      // Prepare Category Data for each tab
+      const incomeCategories = incomes.reduce((acc, income) => {
+        const category = income.category || 'Outros'
+        if (!acc[category]) acc[category] = 0
+        acc[category] += income.amount
+        return acc
+      }, {})
+
+      const expenseCategories = bills.reduce((acc, expense) => {
+        const category = expense.category || 'Outros'
+        if (!acc[category]) acc[category] = 0
+        acc[category] += expense.amount
+        return acc
+      }, {})
+
+      setCategoryData({
+        receitas: Object.entries(incomeCategories).map(([name, value]) => ({ name, value })),
+        despesas: Object.entries(expenseCategories).map(([name, value]) => ({ name, value }))
+      })
+
+      // Entradas (todas as receitas do mês atual)
+      const entradas = incomes
+        .filter(income => {
           const date = new Date(income.date)
-          const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-          
-          if (!monthlyData[monthYear]) {
-            monthlyData[monthYear] = {
-              month: date.toLocaleString('pt-BR', { month: 'short' }),
-              monthYear,
-              inflow: 0,
-              outflow: 0
-            }
-          }
-          
-          monthlyData[monthYear].inflow += income.amount
+          const itemMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+          return itemMonth === currentMonthYearStr
         })
+        .reduce((sum, income) => sum + income.amount, 0)
 
-        // Processa despesas
-        expensesData.forEach(expense => {
+      // Percentual de variação das entradas
+      const entradasAnterior = incomes
+        .filter(income => {
+          const date = new Date(income.date)
+          const itemMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+          return itemMonth === `${previousYear}-${String(previousMonth + 1).padStart(2, '0')}`
+        })
+        .reduce((sum, income) => sum + income.amount, 0)
+
+      const entradasPercentage = entradasAnterior ? 
+        ((entradas - entradasAnterior) / entradasAnterior) * 100 : 0
+
+      // Saídas (todas as despesas do mês atual)
+      const saidas = bills
+        .filter(expense => {
           const date = new Date(expense.date)
-          const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-          
-          if (!monthlyData[monthYear]) {
-            monthlyData[monthYear] = {
-              month: date.toLocaleString('pt-BR', { month: 'short' }),
-              monthYear,
-              inflow: 0,
-              outflow: 0
-            }
-          }
-          
-          monthlyData[monthYear].outflow += expense.amount
+          const itemMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+          return itemMonth === currentMonthYearStr
         })
+        .reduce((sum, expense) => sum + expense.amount, 0)
 
-        // Converte para array e ordena por data
-        const sortedData = Object.values(monthlyData)
-          .sort((a, b) => {
-            const [aYear, aMonth] = a.monthYear.split('-').map(Number)
-            const [bYear, bMonth] = b.monthYear.split('-').map(Number)
-            return aYear === bYear ? aMonth - bMonth : aYear - bYear
-          })
-          .slice(-6) // Últimos 6 meses
-          .map(item => ({
-            ...item,
-            inflow: Number(item.inflow.toFixed(2)),
-            outflow: -Number(item.outflow.toFixed(2)), // Valor negativo para visualização
-            balance: Number((item.inflow - item.outflow).toFixed(2))
-          }))
-
-        setData(sortedData)
-
-        // Current month and previous month for percentage calculations
-        const currentMonthData = sortedData.find(item => {
-          const [year, month] = item.monthYear.split('-').map(Number)
-          return year === currentYear && month === currentMonth + 1
-        }) || { inflow: 0, outflow: 0, balance: 0 }
-
-        const previousMonthData = sortedData.find(item => {
-          const [year, month] = item.monthYear.split('-').map(Number)
-          return year === previousYear && month === previousMonth + 1
-        }) || { inflow: 0, outflow: 0, balance: 0 }
-
-        // Calcula métricas
-        const currentMonthYearStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`
-
-        // Prepare Category Data for each tab
-        const incomeCategories = incomesData.reduce((acc, income) => {
-          const category = income.category || 'Outros'
-          if (!acc[category]) acc[category] = 0
-          acc[category] += income.amount
-          return acc
-        }, {})
-
-        const expenseCategories = expensesData.reduce((acc, expense) => {
-          const category = expense.category || 'Outros'
-          if (!acc[category]) acc[category] = 0
-          acc[category] += expense.amount
-          return acc
-        }, {})
-
-        setCategoryData({
-          receitas: Object.entries(incomeCategories).map(([name, value]) => ({ name, value })),
-          despesas: Object.entries(expenseCategories).map(([name, value]) => ({ name, value }))
+      // Percentual de variação das saídas
+      const saidasAnterior = bills
+        .filter(expense => {
+          const date = new Date(expense.date)
+          const itemMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+          return itemMonth === `${previousYear}-${String(previousMonth + 1).padStart(2, '0')}`
         })
+        .reduce((sum, expense) => sum + expense.amount, 0)
 
-        // Entradas (todas as receitas do mês atual)
-        const entradas = incomesData
-          .filter(income => {
-            const date = new Date(income.date)
-            const itemMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-            return itemMonth === currentMonthYearStr
-          })
-          .reduce((sum, income) => sum + income.amount, 0)
+      const saidasPercentage = saidasAnterior ? 
+        ((saidas - saidasAnterior) / saidasAnterior) * 100 : 0
 
-        // Percentual de variação das entradas
-        const entradasAnterior = incomesData
-          .filter(income => {
-            const date = new Date(income.date)
-            const itemMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-            return itemMonth === `${previousYear}-${String(previousMonth + 1).padStart(2, '0')}`
-          })
-          .reduce((sum, income) => sum + income.amount, 0)
+      // Saldo Final (entradas - saídas) do mês atual
+      const saldoFinal = entradas - saidas
 
-        const entradasPercentage = entradasAnterior ? 
-          ((entradas - entradasAnterior) / entradasAnterior) * 100 : 0
+      // Percentual de variação do saldo final
+      const saldoFinalAnterior = entradasAnterior - saidasAnterior
+      const saldoFinalPercentage = saldoFinalAnterior ? 
+        ((saldoFinal - saldoFinalAnterior) / Math.abs(saldoFinalAnterior)) * 100 : 0
 
-        // Saídas (todas as despesas do mês atual)
-        const saidas = expensesData
-          .filter(expense => {
-            const date = new Date(expense.date)
-            const itemMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-            return itemMonth === currentMonthYearStr
-          })
-          .reduce((sum, expense) => sum + expense.amount, 0)
-
-        // Percentual de variação das saídas
-        const saidasAnterior = expensesData
-          .filter(expense => {
-            const date = new Date(expense.date)
-            const itemMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-            return itemMonth === `${previousYear}-${String(previousMonth + 1).padStart(2, '0')}`
-          })
-          .reduce((sum, expense) => sum + expense.amount, 0)
-
-        const saidasPercentage = saidasAnterior ? 
-          ((saidas - saidasAnterior) / saidasAnterior) * 100 : 0
-
-        // Saldo Final (entradas - saídas) do mês atual
-        const saldoFinal = entradas - saidas
-
-        // Percentual de variação do saldo final
-        const saldoFinalAnterior = entradasAnterior - saidasAnterior
-        const saldoFinalPercentage = saldoFinalAnterior ? 
-          ((saldoFinal - saldoFinalAnterior) / Math.abs(saldoFinalAnterior)) * 100 : 0
-
-        setMetrics({
-          entradas,
-          entradasPercentage,
-          saidas,
-          saidasPercentage,
-          saldoFinal,
-          saldoFinalPercentage
-        })
-
-      } catch (error) {
-        console.error('Erro ao buscar dados:', error)
-      } finally {
-        setIsLoading(false)
-      }
+      setMetrics({
+        entradas,
+        entradasPercentage,
+        saidas,
+        saidasPercentage,
+        saldoFinal,
+        saldoFinalPercentage
+      })
     }
-
-    fetchData()
-  }, [tenant])
+  }, [incomes, bills])
 
   const handleTabChange = (value) => {
     setActiveTab(value)
