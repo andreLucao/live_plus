@@ -26,8 +26,8 @@ import {
   BookUser
 } from 'lucide-react';
 
-// Function to create navigation items based on user role
-const createNavigationItems = (tenant, userRole) => {
+// Function to create navigation items based on user role and subscription plan
+const createNavigationItems = (tenant, userRole, planType) => {
   // Default items for all users (doctor, user)
   const medicalItems = {
     icon: <BriefcaseMedical size={20} />,
@@ -38,8 +38,8 @@ const createNavigationItems = (tenant, userRole) => {
     ]
   };
 
-  // Add Patients page only for doctor, admin, and owner roles
-  if (userRole !== 'user') {
+  // Add Patients page only for doctor, admin, and owner roles AND if not on starter plan
+  if (userRole !== 'user' && planType !== 'starter') {
     medicalItems.subItems.push(
       { icon: <BookUser size={20} />, label: "Pacientes", path: `/${tenant}/patients` }
     );
@@ -60,11 +60,15 @@ const createNavigationItems = (tenant, userRole) => {
     icon: <ClipboardList size={20} />,
     label: "Gestão",
     subItems: [
-      { 
-        icon: <Package size={20} />, 
-        label: "Gestão de Estoque", 
-        path: `/${tenant}/stock`
-      },
+      // Only show stock management for plus plan
+      ...(planType === 'plus' ? [
+        { 
+          icon: <Package size={20} />, 
+          label: "Gestão de Estoque", 
+          path: `/${tenant}/stock`
+        }
+      ] : []),
+      // Show user management for all plans
       { 
         icon: <CircleUserRound size={20} />, 
         label: "Gestão de Usuários", 
@@ -73,7 +77,7 @@ const createNavigationItems = (tenant, userRole) => {
     ]
   };
 
-  // Return different navigation items based on role
+  // Return different navigation items based on role and plan
   if (userRole === 'admin' || userRole === 'owner') {
     return [financialItems, medicalItems, managementItems];
   } else {
@@ -105,38 +109,46 @@ export default function Sidebar({ user, onLogout }) {
   });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [userRole, setUserRole] = useState(user?.role || 'user');
+  const [planType, setPlanType] = useState('plus'); // Default to plus plan
   const [navigationItems, setNavigationItems] = useState([]);
 
-  // Fetch user role if not provided in props
+  // Fetch user role and subscription plan if not provided in props
   useEffect(() => {
-    const fetchUserRole = async () => {
-      if (user?.role) {
-        setUserRole(user.role);
-        return;
-      }
-      
+    const fetchUserData = async () => {
       try {
-        const response = await fetch(`/api/${tenant}/auth/verify-role`);
-        if (response.ok) {
-          const data = await response.json();
-          setUserRole(data.role);
+        // Fetch user role if not provided in props
+        if (!user?.role) {
+          const roleResponse = await fetch(`/api/${tenant}/auth/verify-role`);
+          if (roleResponse.ok) {
+            const roleData = await roleResponse.json();
+            setUserRole(roleData.role);
+          }
+        } else {
+          setUserRole(user.role);
+        }
+        
+        // Fetch subscription data
+        const subscriptionResponse = await fetch(`/api/${tenant}/subscription`);
+        if (subscriptionResponse.ok) {
+          const subscriptionData = await subscriptionResponse.json();
+          setPlanType(subscriptionData.planType || 'plus');
         }
       } catch (error) {
-        console.error('Failed to fetch user role:', error);
+        console.error('Failed to fetch user data:', error);
       }
     };
 
     if (tenant) {
-      fetchUserRole();
+      fetchUserData();
     }
   }, [tenant, user]);
 
-  // Update navigation items when role changes
+  // Update navigation items when role or plan changes
   useEffect(() => {
     if (tenant) {
-      setNavigationItems(createNavigationItems(tenant, userRole));
+      setNavigationItems(createNavigationItems(tenant, userRole, planType));
     }
-  }, [tenant, userRole]);
+  }, [tenant, userRole, planType]);
 
   useEffect(() => {
     const checkMobile = () => {

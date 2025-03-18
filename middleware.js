@@ -75,7 +75,7 @@ export async function middleware(request) {
       }
       
       // Add debug logging
-      console.log('Authenticated user:', payload);
+      //console.log('Authenticated user:', payload);
       
       // User is authenticated and role is still valid, allow access
       const response = NextResponse.next();
