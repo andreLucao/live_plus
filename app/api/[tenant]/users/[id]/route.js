@@ -2,7 +2,56 @@
 import { NextResponse } from 'next/server';
 import { connectDB } from '@/lib/mongodb';
 import { getUserModel } from '@/lib/models/User';
+import { getSubscriptionModel } from '@/lib/models/Subscription';
 import { ObjectId } from 'mongodb'; // Importar se necessário para validação de ID
+
+// Helper function to check subscription limits
+async function checkSubscriptionLimits(connection, tenant, newRole, currentRole = null) {
+  const User = getUserModel(connection);
+  const Subscription = getSubscriptionModel(connection);
+
+  // Get active subscription
+  const subscription = await Subscription.findOne({
+    status: 'active',
+    currentPeriodEnd: { $gt: new Date() }
+  }).sort({ createdAt: -1 });
+
+  if (!subscription) {
+    return { allowed: true }; // If no subscription, allow the operation
+  }
+
+  // Count current doctors and admins
+  const currentCount = await User.countDocuments({
+    tenantPath: tenant,
+    role: { $in: ['doctor', 'admin'] },
+    status: { $ne: 'Archived' }
+  });
+
+  // If we're updating a user and they're already a doctor/admin
+  // and their role isn't changing to doctor/admin, we don't need to check limits
+  if (currentRole && ['doctor', 'admin'].includes(currentRole) && 
+      !['doctor', 'admin'].includes(newRole)) {
+    return { allowed: true };
+  }
+
+  // If we're updating a user and their role isn't changing to doctor/admin,
+  // we don't need to check limits
+  if (currentRole && currentRole === newRole) {
+    return { allowed: true };
+  }
+
+  // If the new role is doctor or admin, check if we're at the limit
+  if (['doctor', 'admin'].includes(newRole)) {
+    if (currentCount >= subscription.userCount) {
+      return {
+        allowed: false,
+        error: `Limite de usuários (${subscription.userCount}) atingido para o plano atual. Por favor, atualize seu plano para adicionar mais usuários.`
+      };
+    }
+  }
+
+  return { allowed: true };
+}
 
 export async function GET(request, { params }) {
   try {
@@ -58,6 +107,18 @@ export async function PUT(request, { params }) {
 
     const body = await request.json();
     console.log('Processing user:', userId, 'with data:', body);
+
+    // Check subscription limits before proceeding
+    const currentUser = userId !== 'new' ? await User.findOne({ _id: userId }) : null;
+    const currentRole = currentUser ? currentUser.role : null;
+    
+    const limitCheck = await checkSubscriptionLimits(connection, tenant, body.role, currentRole);
+    if (!limitCheck.allowed) {
+      return NextResponse.json(
+        { error: limitCheck.error },
+        { status: 403 }
+      );
+    }
 
     // Verifica se o ID é 'new' para criar um novo usuário
     if (userId === 'new') {
