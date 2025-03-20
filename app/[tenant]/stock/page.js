@@ -112,6 +112,7 @@ export default function StockPage() {
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const [itemToDelete, setItemToDelete] = useState(null);
   const [itemToEdit, setItemToEdit] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [editedProduct, setEditedProduct] = useState({
     code: '',
     unit: '',
@@ -138,12 +139,17 @@ export default function StockPage() {
   }, [filter, tenant]);
 
   const fetchProducts = async () => {
+    setIsLoading(true);
     try {
       const response = await fetch(`/api/${tenant}/stock?filter=${filter}`);
       const data = await response.json();
-      setProducts(data);
+      // Ensure products is always an array
+      setProducts(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error fetching products:', error);
+      setProducts([]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -473,11 +479,11 @@ export default function StockPage() {
                             <SelectValue placeholder="Selecione um produto" />
                           </SelectTrigger>
                           <SelectContent>
-                            {products.map((product) => (
+                            {Array.isArray(products) ? products.map((product) => (
                               <SelectItem key={product._id} value={product._id}>
                                 {product.name}
                               </SelectItem>
-                            ))}
+                            )) : null}
                           </SelectContent>
                         </Select>
                       </div>
@@ -557,75 +563,89 @@ export default function StockPage() {
                 <CardTitle>Lista de Produtos</CardTitle>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Produto</TableHead>
-                      <TableHead>Código</TableHead>
-                      <TableHead>Quantidade</TableHead>
-                      <TableHead>Unidade</TableHead>
-                      <TableHead>Estoque Mínimo</TableHead>
-                      <TableHead>Vencimento</TableHead>
-                      <TableHead>Observações</TableHead>
-                      <TableHead>Ações</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {products.map((product) => {
-                      const stockStatus = getStockStatus(product);
-                      const expirationStatus = getExpirationStatus(product.expiration_date);
-                      
-                      return (
-                        <TableRow 
-                          key={product._id}
-                          className="transition-all duration-300 hover:shadow-md"
-                        >
-                          <TableCell>
-                            <div className="space-y-1">
-                              <div>{product.name}</div>
-                              <div className="flex flex-wrap gap-2">
-                                {stockStatus?.badge}
-                                {expirationStatus?.badge}
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>{product.code || 'N/A'}</TableCell>
-                          <TableCell className={product.quantity <= product.minimum_stock ? 'text-[#ff9500] font-medium' : ''}>
-                            {product.quantity}
-                          </TableCell>
-                          <TableCell>{product.unit}</TableCell>
-                          <TableCell>{product.minimum_stock}</TableCell>
-                          <TableCell>
-                            {isValidDate(product.expiration_date)
-                              ? format(new Date(product.expiration_date), 'dd/MM/yyyy')
-                              : 'N/A'}
-                          </TableCell>
-                          <TableCell>{product.observations || 'N/A'}</TableCell>
-                          <TableCell>
-                            <div className="flex gap-2">
-                              <Button 
-                                variant="ghost" 
-                                size="icon"
-                                onClick={() => handleEditClick(product)}
-                                className="text-[#009EE3] hover:text-[#009EE3] hover:bg-[#F5F5F5]"
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                onClick={() => handleDeleteClick(product)}
-                                className="text-red-500 hover:text-red-500 hover:bg-[#F5F5F5]"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
+                {isLoading ? (
+                  <div className="flex justify-center py-8">
+                    <p>Carregando produtos...</p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Produto</TableHead>
+                        <TableHead>Código</TableHead>
+                        <TableHead>Quantidade</TableHead>
+                        <TableHead>Unidade</TableHead>
+                        <TableHead>Estoque Mínimo</TableHead>
+                        <TableHead>Vencimento</TableHead>
+                        <TableHead>Observações</TableHead>
+                        <TableHead>Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {Array.isArray(products) && products.length > 0 ? (
+                        products.map((product) => {
+                          const stockStatus = getStockStatus(product);
+                          const expirationStatus = getExpirationStatus(product.expiration_date);
+                          
+                          return (
+                            <TableRow 
+                              key={product._id}
+                              className="transition-all duration-300 hover:shadow-md"
+                            >
+                              <TableCell>
+                                <div className="space-y-1">
+                                  <div>{product.name}</div>
+                                  <div className="flex flex-wrap gap-2">
+                                    {stockStatus?.badge}
+                                    {expirationStatus?.badge}
+                                  </div>
+                                </div>
+                              </TableCell>
+                              <TableCell>{product.code || 'N/A'}</TableCell>
+                              <TableCell className={product.quantity <= product.minimum_stock ? 'text-[#ff9500] font-medium' : ''}>
+                                {product.quantity}
+                              </TableCell>
+                              <TableCell>{product.unit}</TableCell>
+                              <TableCell>{product.minimum_stock}</TableCell>
+                              <TableCell>
+                                {isValidDate(product.expiration_date)
+                                  ? format(new Date(product.expiration_date), 'dd/MM/yyyy')
+                                  : 'N/A'}
+                              </TableCell>
+                              <TableCell>{product.observations || 'N/A'}</TableCell>
+                              <TableCell>
+                                <div className="flex gap-2">
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon"
+                                    onClick={() => handleEditClick(product)}
+                                    className="text-[#009EE3] hover:text-[#009EE3] hover:bg-[#F5F5F5]"
+                                  >
+                                    <Pencil className="h-4 w-4" />
+                                  </Button>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    onClick={() => handleDeleteClick(product)}
+                                    className="text-red-500 hover:text-red-500 hover:bg-[#F5F5F5]"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={8} className="text-center py-8">
+                            Nenhum produto encontrado.
                           </TableCell>
                         </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
+                      )}
+                    </TableBody>
+                  </Table>
+                )}
               </CardContent>
             </Card>
 
