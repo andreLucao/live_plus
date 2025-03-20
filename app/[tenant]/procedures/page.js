@@ -34,6 +34,7 @@ export default function ProcedureManager() {
   const [editingId, setEditingId] = useState(null)
   const [darkMode, setDarkMode] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [isSidebarLoading, setIsSidebarLoading] = useState(true)
   const [error, setError] = useState("")
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [startDate, setStartDate] = useState("")
@@ -339,10 +340,10 @@ export default function ProcedureManager() {
     return categoryMatch && nameMatch
   })
 
-  if (isLoading) {
+  if (isLoading || isSidebarLoading) {
     return (
       <div className="flex h-screen bg-gray-50">
-        <Sidebar />
+        <Sidebar onLoadingChange={setIsSidebarLoading} />
         <main className="flex-1 overflow-y-auto">
           <div className="flex justify-center items-center h-full">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -354,7 +355,7 @@ export default function ProcedureManager() {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      <Sidebar />
+      <Sidebar onLoadingChange={setIsSidebarLoading} />
       <main className="flex-1 overflow-y-auto">
         <div className="space-y-6 p-6">
           <div className="max-w-7xl mx-auto">

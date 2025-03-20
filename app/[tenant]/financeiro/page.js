@@ -20,6 +20,7 @@ function FinancialDashboard() {
   const [lastMonthIncome, setLastMonthIncome] = useState(0)
   const [lastMonthExpenses, setLastMonthExpenses] = useState(0)
   const [lastMonthProfit, setLastMonthProfit] = useState(0)
+  const [isSidebarLoading, setIsSidebarLoading] = useState(true)
   const { incomes, bills, isLoading, error, fetchAllData } = useFinance()
 
   useEffect(() => {
@@ -76,10 +77,10 @@ function FinancialDashboard() {
   const totalExpenses = bills.reduce((sum, bill) => sum + bill.amount, 0)
   const profit = totalIncome - totalExpenses
 
-  if (isLoading) {
+  if (isLoading || isSidebarLoading) {
     return (
       <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
-        <Sidebar />
+        <Sidebar onLoadingChange={setIsSidebarLoading} />
         <main className="flex-1 overflow-y-auto">
           <div className="flex justify-center items-center h-full">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -91,7 +92,7 @@ function FinancialDashboard() {
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
-      <Sidebar />
+      <Sidebar onLoadingChange={setIsSidebarLoading} />
       <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
         {error && (
           <Alert variant="destructive">
@@ -287,7 +288,7 @@ function RoleProtectedDashboard() {
   if (loading) {
     return (
       <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
-        <Sidebar />
+        <Sidebar onLoadingChange={() => {}} />
         <main className="flex-1 overflow-y-auto">
           <div className="flex justify-center items-center h-full">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -300,7 +301,7 @@ function RoleProtectedDashboard() {
   if (error) {
     return (
       <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
-        <Sidebar />
+        <Sidebar onLoadingChange={() => {}} />
         <main className="flex-1 overflow-y-auto p-8">
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
@@ -316,7 +317,7 @@ function RoleProtectedDashboard() {
   if (userRole !== "owner" && userRole !== "admin") {
     return (
       <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
-        <Sidebar />
+        <Sidebar onLoadingChange={() => {}} />
         <main className="flex-1 overflow-y-auto p-8">
           <Alert variant="destructive">
             <ShieldAlert className="h-4 w-4" />

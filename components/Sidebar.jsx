@@ -86,7 +86,7 @@ const createNavigationItems = (tenant, userRole, planType) => {
   }
 };
 
-export default function Sidebar({ user, onLogout }) {
+export default function Sidebar({ user, onLogout, onLoadingChange }) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useParams();
@@ -108,14 +108,16 @@ export default function Sidebar({ user, onLogout }) {
     return {};
   });
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [userRole, setUserRole] = useState(user?.role || 'user');
-  const [planType, setPlanType] = useState('plus'); // Default to plus plan
+  const [userRole, setUserRole] = useState(null);
+  const [planType, setPlanType] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [navigationItems, setNavigationItems] = useState([]);
 
   // Fetch user role and subscription plan if not provided in props
   useEffect(() => {
     const fetchUserData = async () => {
       try {
+        setIsLoading(true);
         // Fetch user role if not provided in props
         if (!user?.role) {
           const roleResponse = await fetch(`/api/${tenant}/auth/verify-role`);
@@ -135,17 +137,23 @@ export default function Sidebar({ user, onLogout }) {
         }
       } catch (error) {
         console.error('Failed to fetch user data:', error);
+      } finally {
+        setIsLoading(false);
+        // Notify parent component about loading state change
+        if (onLoadingChange) {
+          onLoadingChange(false);
+        }
       }
     };
 
     if (tenant) {
       fetchUserData();
     }
-  }, [tenant, user]);
+  }, [tenant, user, onLoadingChange]);
 
   // Update navigation items when role or plan changes
   useEffect(() => {
-    if (tenant) {
+    if (tenant && userRole && planType) {
       setNavigationItems(createNavigationItems(tenant, userRole, planType));
     }
   }, [tenant, userRole, planType]);
@@ -206,8 +214,14 @@ export default function Sidebar({ user, onLogout }) {
     }
   };
 
-  if (!tenant) {
-    return null; // Or some loading state/error message
+  if (!tenant || isLoading || !userRole || !planType) {
+    return (
+      <div className="bg-white dark:bg-gray-800 h-screen w-64 min-w-[16rem] border-r border-gray-200 dark:border-gray-700">
+        <div className="flex justify-center items-center h-full">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        </div>
+      </div>
+    );
   }
 
   return (
