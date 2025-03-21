@@ -305,13 +305,27 @@ export default function ProcedureManager() {
   const getTimeAgo = (date) => {
     const now = new Date()
     const procedureDate = new Date(date)
-    const diffTime = Math.abs(now - procedureDate)
+    const diffTime = now - procedureDate
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
     
+    // Handle future dates
+    if (diffTime < 0) {
+      if (diffDays === -1) return "Amanhã"
+      if (diffDays > -7) return `Em ${Math.abs(diffDays)} dias`
+      if (diffDays > -14) return `Em 1 semana`
+      if (diffDays > -30) return `Em ${Math.abs(Math.floor(diffDays / 7))} semanas`
+      if (diffDays > -60) return `Em 1 mês`
+      if (diffDays > -365) return `Em ${Math.abs(Math.floor(diffDays / 30))} meses`
+      return `Em ${Math.abs(Math.floor(diffDays / 365))} anos`
+    }
+    
+    // Handle past dates
     if (diffDays === 0) return "Hoje"
     if (diffDays === 1) return "Ontem"
     if (diffDays < 7) return `${diffDays} dias atrás`
+    if (diffDays < 14) return `1 semana atrás`
     if (diffDays < 30) return `${Math.floor(diffDays / 7)} semanas atrás`
+    if (diffDays < 60) return `1 mês atrás`
     if (diffDays < 365) return `${Math.floor(diffDays / 30)} meses atrás`
     return `${Math.floor(diffDays / 365)} anos atrás`
   }
