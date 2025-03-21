@@ -6,7 +6,7 @@ import { connectDB } from '@/lib/mongodb';
 import { getUserModel } from '@/lib/models/User';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-jwt-secret';
-const ROLE_EXPIRY_TIME = 60; // 1 min in seconds
+const ROLE_EXPIRY_TIME = 360; // 1 min in seconds
 
 export async function GET(request, { params }) {
   const id = await params;
