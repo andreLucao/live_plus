@@ -4,8 +4,7 @@ import { getBillModel } from '@/lib/models/Bill';
 
 export async function DELETE(request, { params }) {
   try {
-    const { id } = await params;
-    const tenant = id.tenant 
+    const { id, tenant } = params;
     
     // Connect to the specific tenant's database
     const connection = await connectDB(tenant);
@@ -14,11 +13,24 @@ export async function DELETE(request, { params }) {
     const Bill = getBillModel(connection);
     
     // Delete the bill
-    await Bill.findByIdAndDelete(id);
+    const result = await Bill.findByIdAndDelete(id);
     
-    return NextResponse.json({ message: 'Bill deleted successfully' });
+    if (!result) {
+      return NextResponse.json(
+        { error: 'Despesa não encontrada' },
+        { status: 404 }
+      );
+    }
+    
+    return NextResponse.json({ 
+      message: 'Despesa excluída com sucesso',
+      deletedId: id
+    });
   } catch (error) {
     console.error('Delete bill error:', error);
-    return NextResponse.json({ error: 'Failed to delete bill' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Falha ao excluir a despesa' }, 
+      { status: 500 }
+    );
   }
 }

@@ -145,7 +145,7 @@ export default function HospitalIncomeManager() {
   }
 
   const handleDeleteConfirm = async () => {
-    if (deleteConfirmation === incomeToDelete.name) {
+    if (deleteConfirmation === incomeToDelete.patientName) {
       await removeIncome(incomeToDelete._id)
       setIsDeleteModalOpen(false)
       setIncomeToDelete(null)
@@ -159,12 +159,17 @@ export default function HospitalIncomeManager() {
         method: 'DELETE',
       })
 
-      if (!response.ok) throw new Error('Failed to delete income')
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to delete income')
+      }
+
       await fetchIncomes()
       setError("")
     } catch (error) {
       console.error('Error deleting income:', error)
-      setError("Failed to delete income. Please try again.")
+      setError(error.message || "Failed to delete income. Please try again.")
     }
   }
 
@@ -659,15 +664,15 @@ export default function HospitalIncomeManager() {
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="text-sm text-gray-600">
-                  Para confirmar a exclusão, digite o nome da receita:
+                  Para confirmar a exclusão, digite o nome do paciente:
                   <span className="font-semibold text-gray-900 ml-1">
-                    {incomeToDelete?.name}
+                    {incomeToDelete?.patientName}
                   </span>
                 </div>
                 <Input
                   value={deleteConfirmation}
                   onChange={(e) => setDeleteConfirmation(e.target.value)}
-                  placeholder="Digite o nome da receita"
+                  placeholder="Digite o nome do paciente"
                   className="w-full"
                 />
               </div>
@@ -685,7 +690,7 @@ export default function HospitalIncomeManager() {
                 <Button
                   variant="destructive"
                   onClick={handleDeleteConfirm}
-                  disabled={deleteConfirmation !== incomeToDelete?.name}
+                  disabled={deleteConfirmation !== incomeToDelete?.patientName}
                 >
                   Excluir
                 </Button>

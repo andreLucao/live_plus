@@ -128,7 +128,7 @@ export default function ExpensesPage() {
   }
 
   const handleDeleteConfirm = async () => {
-    if (deleteConfirmation === itemToDelete.name) {
+    if (deleteConfirmation === itemToDelete.supplierName) {
       await removeBill(itemToDelete._id)
       setIsDeleteModalOpen(false)
       setItemToDelete(null)
@@ -142,12 +142,17 @@ export default function ExpensesPage() {
         method: 'DELETE',
       })
 
-      if (!response.ok) throw new Error('Failed to delete bill')
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to delete bill')
+      }
+
       await fetchBills()
       setError("")
     } catch (error) {
       console.error('Error deleting bill:', error)
-      setError("Falha ao excluir despesa. Por favor, tente novamente.")
+      setError(error.message || "Falha ao excluir despesa. Por favor, tente novamente.")
     }
   }
 
@@ -650,11 +655,11 @@ export default function ExpensesPage() {
                   <DialogTitle>Confirmar Exclusão</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4">
-                  <p>Para confirmar a exclusão, digite o nome da despesa: <strong>{itemToDelete?.name}</strong></p>
+                  <p>Para confirmar a exclusão, digite o nome do fornecedor: <strong>{itemToDelete?.supplierName}</strong></p>
                   <Input
                     value={deleteConfirmation}
                     onChange={(e) => setDeleteConfirmation(e.target.value)}
-                    placeholder="Digite o nome da despesa"
+                    placeholder="Digite o nome do fornecedor"
                   />
                   <div className="flex justify-end gap-4">
                     <Button variant="outline" onClick={() => setIsDeleteModalOpen(false)}>
@@ -663,7 +668,7 @@ export default function ExpensesPage() {
                     <Button
                       variant="destructive"
                       onClick={handleDeleteConfirm}
-                      disabled={deleteConfirmation !== itemToDelete?.name}
+                      disabled={deleteConfirmation !== itemToDelete?.supplierName}
                     >
                       Excluir
                     </Button>
